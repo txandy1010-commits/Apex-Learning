@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex Academic Network | Courseware & Resources</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #334155;
+      --text-heading: #0f172a;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent);
+    }
+
+    .hero {
+      background: linear-gradient(180deg, #1e293b 0%, var(--primary) 100%);
+      color: white;
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      font-weight: 800;
+    }
+
+    .hero p {
+      max-width: 650px;
+      margin: 0 auto 1.5rem;
+      color: #94a3b8;
+      font-size: 1.1rem;
+    }
+
+    .main-content {
+      max-width: 1200px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      color: var(--text-heading);
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-tag {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      margin-bottom: 0.75rem;
+      width: fit-content;
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      color: var(--text-heading);
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 1.25rem;
+      flex-grow: 1;
+    }
+
+    .card-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .card-link:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      background-color: var(--primary);
+      color: #94a3b8;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .footer-links a {
+      color: #94a3b8;
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .secret-trigger {
+      cursor: pointer;
+      color: inherit;
+      user-select: none;
+    }
+
+    /* Embedded Games Modal Overlay */
+    #gamesOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #090d16;
+      z-index: 10000;
+      flex-direction: column;
+    }
+
+    .overlay-bar {
+      height: 50px;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.5rem;
+      color: white;
+    }
+
+    .overlay-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #38bdf8;
+    }
+
+    .close-btn {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .close-btn:hover {
+      background: #b91c1c;
+    }
+
+    .iframe-container {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 50px);
+      border: none;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        Apex Academic Hub
+      </a>
+      <ul class="nav-links">
+        <li><a href="https://www.khanacademy.org" target="_blank">Khan Academy</a></li>
+        <li><a href="https://openstax.org" target="_blank">OpenStax Textbooks</a></li>
+        <li><a href="https://ocw.mit.edu" target="_blank">MIT OpenCourseWare</a></li>
+        <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>Open Educational Resource Portal</h1>
+    <p>Access structured learning modules, verified peer-reviewed textbooks, and interactive study suites across science, mathematics, and humanities.</p>
+  </section>
+
+  <main class="main-content">
+    <h2 class="section-title">Core Academic Subjects</h2>
+    <div class="grid">
+      <div class="card">
+        <div>
+          <span class="card-tag">Mathematics</span>
+          <h3>Calculus & Linear Algebra</h3>
+          <p>Comprehensive video lectures, practice exercises, and step-by-step solutions hosted on Khan Academy.</p>
+        </div>
+        <a href="https://www.khanacademy.org/math/calculus-1" target="_blank" class="card-link">Access Courseware &rarr;</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="card-tag">Natural Sciences</span>
+          <h3>Physics & Chemistry Modules</h3>
+          <p>Free, peer-reviewed college physics and general chemistry textbooks provided by OpenStax College.</p>
+        </div>
+        <a href="https://openstax.org/subjects/science" target="_blank" class="card-link">Open Textbooks &rarr;</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="card-tag">Computer Science</span>
+          <h3>Algorithms & Programming</h3>
+          <p>Introductory computer science and software engineering courses directly from MIT OpenCourseWare.</p>
+        </div>
+        <a href="https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/" target="_blank" class="card-link">View Curriculum &rarr;</a>
+      </div>
+    </div>
+
+    <h2 class="section-title">Interactive Reference Tools</h2>
+    <div class="grid">
+      <div class="card">
+        <div>
+          <span class="card-tag">Tool</span>
+          <h3>Desmos Graphing Calculator</h3>
+          <p>Advanced digital graphing calculator for plotting functions, data points, and analyzing equations.</p>
+        </div>
+        <a href="https://www.desmos.com/calculator" target="_blank" class="card-link">Launch Calculator &rarr;</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="card-tag">Tool</span>
+          <h3>Wolfram Alpha Knowledge Engine</h3>
+          <p>Computational intelligence engine for solving equations, analyzing scientific data, and exploring statistics.</p>
+        </div>
+        <a href="https://www.wolframalpha.com" target="_blank" class="card-link">Open Engine &rarr;</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="card-tag">Reference</span>
+          <h3>Project Gutenberg E-Library</h3>
+          <p>Over 70,000 free eBook volumes of world literature and classic historical manuscripts.</p>
+        </div>
+        <a href="https://www.gutenberg.org" target="_blank" class="card-link">Browse Library &rarr;</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://www.ed.gov" target="_blank">Department of Education</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Accessibility Standards</a>
+    </div>
+    <p>
+      &copy; 2026 Apex Academic Network. Designed for global access to open education<span class="secret-trigger" onclick="toggleSecretHub()">.</span>
+    </p>
+  </footer>
+
+  <div id="gamesOverlay">
+    <div class="overlay-bar">
+      <span class="overlay-title">Terminal Access — Embedded Platform</span>
+      <button class="close-btn" onclick="toggleSecretHub()">Return to Study Mode</button>
+    </div>
+    <div class="iframe-container">
+      <iframe id="gameFrame" src="" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const gameUrl = "https://moregames-seven.vercel.app/ef.html";
+    let loaded = false;
+
+    function toggleSecretHub() {
+      const overlay = document.getElementById('gamesOverlay');
+      const iframe = document.getElementById('gameFrame');
+
+      if (overlay.style.display === 'flex') {
+        overlay.style.display = 'none';
+      } else {
+        if (!loaded) {
+          iframe.src = gameUrl;
+          loaded = true;
+        }
+        overlay.style.display = 'flex';
+      }
+    }
+  </script>
+
+</body>
+</html>
