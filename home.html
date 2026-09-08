@@ -52,7 +52,7 @@
     .nav-right {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1rem;
     }
 
     .logo {
@@ -99,6 +99,23 @@
 
     .login-btn:hover {
       background: var(--accent-hover);
+    }
+
+    .logout-btn {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: none;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #b91c1c;
     }
 
     .hero {
@@ -230,6 +247,12 @@
       user-select: none;
     }
 
+    .secret-period-trigger {
+      cursor: pointer;
+      color: inherit;
+      user-select: none;
+    }
+
     /* Embedded Games Modal Overlay */
     #gamesOverlay {
       display: none;
@@ -292,6 +315,17 @@
       background: var(--accent);
       color: white;
       border-color: var(--accent);
+    }
+
+    .tab-btn.admin-tab {
+      display: none;
+      background: #8b5cf6;
+      color: white;
+      border-color: #7c3aed;
+    }
+
+    .tab-btn.admin-tab.active {
+      background: #7c3aed;
     }
 
     .action-btn-group {
@@ -567,6 +601,155 @@
     .runner-view.active {
       display: block;
     }
+
+    /* EXPERIMENTAL OVERPOWERD TESTING STYLES */
+    .ugs-body {
+      background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow-y: auto;
+    }
+
+    .ugs-sidebar {
+      position: sticky;
+      left: 0;
+      top: 0;
+      width: 80px;
+      height: 100%;
+      min-height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+
+    .ugs-sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .ugs-sidebar::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .ugs-sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 3px;
+    }
+
+    .ugs-sidebar-btn {
+      background: rgb(89, 134, 218);
+      border: none;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: white;
+      text-align: center;
+      min-height: 45px;
+    }
+
+    .ugs-sidebar-btn:hover {
+      background: #79aadb;
+      transform: scale(1.05);
+    }
+
+    .ugs-sidebar-btn.empty {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .ugs-sidebar-btn.empty:hover {
+      transform: none;
+      background: rgb(89, 134, 218);
+    }
+
+    .ugs-main-content {
+      margin-left: 20px;
+      flex: 1;
+      padding: 20px;
+    }
+
+    .ugs-main-content h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .ugs-letter-section {
+      margin-bottom: 40px;
+      padding: 0 20px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      min-height: 100px;
+    }
+
+    .ugs-letter-section.empty {
+      opacity: 0.5;
+    }
+
+    .ugs-letter-header {
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid rgba(255,255,255,0.3);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .ugs-buttons-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ugs-empty-message {
+      color: rgba(255,255,255,0.6);
+      font-style: italic;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .ugs-main-content input[type="button"] {
+      background: rgb(89, 134, 218);
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      width: 100%;
+      max-width: 600px;
+      color: white;
+      text-align: left;
+    }
+
+    .ugs-main-content input[type="button"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+      background: #79aadb;
+    }
+
+    .ugs-main-content input[type="button"]:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -585,6 +768,7 @@
           <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
         </ul>
         <a href="login.html" class="login-btn" id="navLoginBtn">Login</a>
+        <button class="logout-btn" id="navLogoutBtn" onclick="handleLogout()">Logout</button>
       </div>
     </div>
   </header>
@@ -676,6 +860,7 @@
           <button class="tab-btn active" onclick="switchPage('home')">Home</button>
           <button class="tab-btn" onclick="switchPage(2)">New Games</button>
           <button class="tab-btn" onclick="switchPage(3)">Old Games</button>
+          <button class="tab-btn admin-tab" id="adminSecretTabBtn" onclick="switchPage('experimental')">&#9889; Experimental Overpowerd Testing</button>
         </div>
       </div>
       <div class="action-btn-group">
@@ -689,7 +874,7 @@
         <div class="home-container" id="homeViewContainer">
           <div class="home-hero">
             <h2>Welcome to Apex Learning Secret Games</h2>
-            <p>Access terminal suites, arcade titles, and embedded resources.</p>
+            <p>Access terminal suites, arcade titles, and embedded resources<span class="secret-period-trigger" onclick="triggerAdminSecretPage(event)">.</span></p>
           </div>
           <div class="home-content">
             <h3 class="home-section-title">Quick Access Platforms</h3>
@@ -749,20 +934,65 @@
           </div>
         </div>
       </div>
+
+      <!-- EXPERIMENTAL OVERPOWERD TESTING EMBEDDED PAGE VIEW -->
+      <div id="pageExperimental" class="page-view">
+        <div class="ugs-body">
+          <div class="ugs-sidebar" id="sidebar"></div>
+          <div class="ugs-main-content">
+            <h1>UGS Files</h1>
+            <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
+            Files from 
+            <a href="https://docs.google.com/document/d/1_FmH3BlSBQI7FGgAQL59-ZPe8eCxs35wel6JUyVaG8Q/" 
+                target="_blank" 
+                style="display: inline; color: #79aadb; text-decoration: none; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+                Ultimate Game Stash Google Doc
+            </a>
+            </h2>
+            <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
+            Discord Server:
+            <a href="https://discord.gg/rmVsAqkpkA" 
+                target="_blank" 
+                style="display: inline; color: #79aadb; text-decoration: none; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+                https://discord.gg/rmVsAqkpkA
+            </a>
+            </h2>
+            <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
+                <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none; box-shadow: 0 2px 4px rgba(7, 105, 218, 0.1);">
+                <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isnt loading</button>
+            </h2> 
+
+            <div id="sections-container"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script>
-    // Check login state to update top right button display
+    // Navigation and Session Tracking
     window.addEventListener('DOMContentLoaded', () => {
       const loginBtn = document.getElementById('navLoginBtn');
+      const logoutBtn = document.getElementById('navLogoutBtn');
+      
       if (localStorage.getItem('isLoggedIn') === 'true') {
         loginBtn.textContent = "Logged In";
-        loginBtn.style.background = "#10b981"; // Green background
+        loginBtn.style.background = "#10b981"; // Green indicator
         loginBtn.style.cursor = "default";
-        loginBtn.removeAttribute('href'); // Prevents redirecting back to login page if clicked while logged in
+        loginBtn.removeAttribute('href');
+        logoutBtn.style.display = "inline-block";
+      } else {
+        logoutBtn.style.display = "none";
       }
     });
+
+    function handleLogout() {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('loggedUser');
+      window.location.reload();
+    }
 
     const primaryGameUrl = "https://moregames-seven.vercel.app/ef.html";
     const vercelBaseUrl = "https://1000-htmlgames.vercel.app/";
@@ -780,13 +1010,14 @@
 
     let page2Loaded = false;
     let page3Loaded = false;
+    let experimentalLoaded = false;
     let activePage = 'home';
-    let openedGames = {}; // Track active game tabs { tabId: { name, url } }
+    let openedGames = {}; // Track active game tabs
     let activeTabId = null;
 
     function toggleSecretHub() {
       if (localStorage.getItem('isLoggedIn') !== 'true') {
-        return; // Locked if not logged in
+        return; // Locked unless logged in
       }
 
       const overlay = document.getElementById('gamesOverlay');
@@ -794,6 +1025,20 @@
         overlay.style.display = 'none';
       } else {
         overlay.style.display = 'flex';
+      }
+    }
+
+    // Trigger Admin Secret Page via clicking period
+    function triggerAdminSecretPage(event) {
+      if (event) event.stopPropagation();
+
+      const isAdmin = localStorage.getItem('isAdmin') === 'true';
+      if (isAdmin) {
+        // Unlock tab navigation & reveal
+        document.getElementById('adminSecretTabBtn').style.display = 'inline-block';
+        switchPage('experimental');
+      } else {
+        alert("Access Denied: Admin privileges required.");
       }
     }
 
@@ -805,6 +1050,7 @@
       document.getElementById('pageHome').classList.remove('active');
       document.getElementById('page2').classList.remove('active');
       document.getElementById('page3').classList.remove('active');
+      document.getElementById('pageExperimental').classList.remove('active');
 
       if (pageKey === 'home') {
         tabs[0].classList.add('active');
@@ -823,6 +1069,21 @@
           fetchRepositoryGames();
           page3Loaded = true;
         }
+      } else if (pageKey === 'experimental') {
+        document.getElementById('adminSecretTabBtn').classList.add('active');
+        document.getElementById('pageExperimental').classList.add('active');
+        if (!experimentalLoaded) {
+          // Dynamically load UGS scripts when unlocked
+          const s1 = document.createElement('script');
+          s1.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/searchbut.js';
+          document.body.appendChild(s1);
+
+          const s2 = document.createElement('script');
+          s2.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js';
+          document.body.appendChild(s2);
+
+          experimentalLoaded = true;
+        }
       }
     }
 
@@ -834,6 +1095,8 @@
       } else if (activePage === 3) {
         const activeRunner = document.getElementById('libraryGameView').style.display === 'flex';
         toggleFullscreen(activeRunner ? 'runnerIframeContainer' : 'page3');
+      } else if (activePage === 'experimental') {
+        toggleFullscreen('pageExperimental');
       }
     }
 
@@ -909,7 +1172,6 @@
       }
     }
 
-    // Multi-tab game runner controls
     function launchLibraryGame(filename, cleanName) {
       const tabId = 'game_' + filename.replace(/[^a-zA-Z0-9]/g, '_');
       const gameUrl = vercelBaseUrl + filename;
@@ -917,11 +1179,9 @@
       document.getElementById('libraryGridView').style.display = 'none';
       document.getElementById('libraryGameView').style.display = 'flex';
 
-      // If game tab doesn't exist yet, create it
       if (!openedGames[tabId]) {
         openedGames[tabId] = { name: cleanName, url: gameUrl };
 
-        // Create iframe view element
         const container = document.getElementById('runnerIframeContainer');
         const iframeView = document.createElement('iframe');
         iframeView.className = 'runner-view';
@@ -939,21 +1199,18 @@
     function switchGameTab(tabId) {
       activeTabId = tabId;
 
-      // Update active state on views
       document.querySelectorAll('.runner-view').forEach(view => {
         view.classList.remove('active');
       });
       const targetView = document.getElementById(tabId + '_view');
       if (targetView) targetView.classList.add('active');
 
-      // Re-render tab list UI
       renderTabsUI();
     }
 
     function closeGameTab(event, tabId) {
-      event.stopPropagation(); // Prevent tab switching when clicking close button
+      event.stopPropagation();
 
-      // Remove iframe view element
       const viewEl = document.getElementById(tabId + '_view');
       if (viewEl) viewEl.remove();
 
@@ -961,10 +1218,8 @@
 
       const remainingKeys = Object.keys(openedGames);
       if (remainingKeys.length > 0) {
-        // Switch to the next available tab
         switchGameTab(remainingKeys[remainingKeys.length - 1]);
       } else {
-        // No games left open, go back to catalog view grid
         showCatalogGrid();
       }
     }
