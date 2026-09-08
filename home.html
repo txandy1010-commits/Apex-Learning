@@ -497,8 +497,9 @@
       background: var(--accent-hover);
     }
 
+    /* Multi-tab game runner styling */
     .game-runner-bar {
-      height: 40px;
+      height: 45px;
       background: #0f172a;
       border-bottom: 1px solid #1e293b;
       display: flex;
@@ -507,24 +508,64 @@
       padding: 0 1rem;
     }
 
-    .runner-left {
+    .active-games-tabs {
       display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
       align-items: center;
-      gap: 1rem;
+      flex: 1;
+      margin-right: 1rem;
     }
 
-    .back-to-grid-btn {
+    .game-tab {
       background: #1e293b;
-      color: white;
+      color: #94a3b8;
       border: 1px solid #334155;
-      padding: 0.25rem 0.6rem;
+      padding: 0.3rem 0.7rem;
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
     }
 
-    .back-to-grid-btn:hover {
-      background: #334155;
+    .game-tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .game-tab .close-tab {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .game-tab .close-tab:hover {
+      color: #fca5a5;
+    }
+
+    .runner-iframe-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: calc(100% - 45px);
+    }
+
+    .runner-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .runner-view.active {
+      display: block;
     }
   </style>
 </head>
@@ -543,7 +584,7 @@
           <li><a href="https://ocw.mit.edu" target="_blank">MIT OpenCourseWare</a></li>
           <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
         </ul>
-        <a href="login.html" class="login-btn">Login</a>
+        <a href="login.html" class="login-btn" id="navLoginBtn">Login</a>
       </div>
     </div>
   </header>
@@ -693,19 +734,18 @@
               <input type="text" id="gameSearch" class="search-input" placeholder="Search games..." oninput="filterGames()">
               <span id="gameCount" class="status-text">Loading catalog...</span>
             </div>
-            <div class="library-grid" id="gamesGrid">
-              </div>
+            <div class="library-grid" id="gamesGrid"></div>
           </div>
 
           <div id="libraryGameView" style="display: none; flex-direction: column; height: 100%;">
             <div class="game-runner-bar">
-              <div class="runner-left">
-                <button class="back-to-grid-btn" onclick="closeLibraryGame()">&larr; Back to Catalog</button>
-                <span id="currentGameTitle" style="font-size: 0.85rem; color: #94a3b8;"></span>
+              <div style="display: flex; align-items: center; gap: 0.8rem; flex: 1; overflow: hidden;">
+                <button class="back-to-grid-btn" onclick="showCatalogGrid()">&larr; Catalog</button>
+                <div class="active-games-tabs" id="activeGamesTabs"></div>
               </div>
-              <button class="fullscreen-btn" onclick="toggleFullscreen('gameFrame2')">Fullscreen</button>
+              <button class="fullscreen-btn" onclick="toggleActiveRunnerFullscreen()">Fullscreen</button>
             </div>
-            <iframe id="gameFrame2" src="" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+            <div class="runner-iframe-container" id="runnerIframeContainer"></div>
           </div>
         </div>
       </div>
@@ -713,6 +753,17 @@
   </div>
 
   <script>
+    // Check login state to update top right button display
+    window.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('navLoginBtn');
+      if (localStorage.getItem('isLoggedIn') === 'true') {
+        loginBtn.textContent = "Logged In";
+        loginBtn.style.background = "#10b981"; // Green background
+        loginBtn.style.cursor = "default";
+        loginBtn.removeAttribute('href'); // Prevents redirecting back to login page if clicked while logged in
+      }
+    });
+
     const primaryGameUrl = "https://moregames-seven.vercel.app/ef.html";
     const vercelBaseUrl = "https://1000-htmlgames.vercel.app/";
     const githubApiUrl = "https://api.github.com/repos/txandy1010-commits/1000HTMLGAMES/contents";
@@ -730,11 +781,12 @@
     let page2Loaded = false;
     let page3Loaded = false;
     let activePage = 'home';
+    let openedGames = {}; // Track active game tabs { tabId: { name, url } }
+    let activeTabId = null;
 
     function toggleSecretHub() {
-      // Check if logged in via localStorage
       if (localStorage.getItem('isLoggedIn') !== 'true') {
-        return; // Nothing happens if not logged in
+        return; // Locked if not logged in
       }
 
       const overlay = document.getElementById('gamesOverlay');
@@ -747,7 +799,7 @@
 
     function switchPage(pageKey) {
       activePage = pageKey;
-      const tabs = document.querySelectorAll('.tab-btn');
+      const tabs = document.querySelectorAll('.page-tabs .tab-btn');
       tabs.forEach(tab => tab.classList.remove('active'));
 
       document.getElementById('pageHome').classList.remove('active');
@@ -781,8 +833,12 @@
         toggleFullscreen('gameFrame1');
       } else if (activePage === 3) {
         const activeRunner = document.getElementById('libraryGameView').style.display === 'flex';
-        toggleFullscreen(activeRunner ? 'gameFrame2' : 'page3');
+        toggleFullscreen(activeRunner ? 'runnerIframeContainer' : 'page3');
       }
+    }
+
+    function toggleActiveRunnerFullscreen() {
+      toggleFullscreen('runnerIframeContainer');
     }
 
     function toggleFullscreen(elementId) {
@@ -853,15 +909,84 @@
       }
     }
 
+    // Multi-tab game runner controls
     function launchLibraryGame(filename, cleanName) {
+      const tabId = 'game_' + filename.replace(/[^a-zA-Z0-9]/g, '_');
+      const gameUrl = vercelBaseUrl + filename;
+
       document.getElementById('libraryGridView').style.display = 'none';
       document.getElementById('libraryGameView').style.display = 'flex';
-      document.getElementById('currentGameTitle').textContent = `Running: ${cleanName}`;
-      document.getElementById('gameFrame2').src = vercelBaseUrl + filename;
+
+      // If game tab doesn't exist yet, create it
+      if (!openedGames[tabId]) {
+        openedGames[tabId] = { name: cleanName, url: gameUrl };
+
+        // Create iframe view element
+        const container = document.getElementById('runnerIframeContainer');
+        const iframeView = document.createElement('iframe');
+        iframeView.className = 'runner-view';
+        iframeView.id = tabId + '_view';
+        iframeView.src = gameUrl;
+        iframeView.setAttribute('allowfullscreen', 'true');
+        iframeView.setAttribute('webkitallowfullscreen', 'true');
+        iframeView.setAttribute('mozallowfullscreen', 'true');
+        container.appendChild(iframeView);
+      }
+
+      switchGameTab(tabId);
     }
 
-    function closeLibraryGame() {
-      document.getElementById('gameFrame2').src = '';
+    function switchGameTab(tabId) {
+      activeTabId = tabId;
+
+      // Update active state on views
+      document.querySelectorAll('.runner-view').forEach(view => {
+        view.classList.remove('active');
+      });
+      const targetView = document.getElementById(tabId + '_view');
+      if (targetView) targetView.classList.add('active');
+
+      // Re-render tab list UI
+      renderTabsUI();
+    }
+
+    function closeGameTab(event, tabId) {
+      event.stopPropagation(); // Prevent tab switching when clicking close button
+
+      // Remove iframe view element
+      const viewEl = document.getElementById(tabId + '_view');
+      if (viewEl) viewEl.remove();
+
+      delete openedGames[tabId];
+
+      const remainingKeys = Object.keys(openedGames);
+      if (remainingKeys.length > 0) {
+        // Switch to the next available tab
+        switchGameTab(remainingKeys[remainingKeys.length - 1]);
+      } else {
+        // No games left open, go back to catalog view grid
+        showCatalogGrid();
+      }
+    }
+
+    function renderTabsUI() {
+      const tabsContainer = document.getElementById('activeGamesTabs');
+      tabsContainer.innerHTML = '';
+
+      for (const [id, data] of Object.entries(openedGames)) {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'game-tab' + (id === activeTabId ? ' active' : '');
+        tabEl.onclick = () => switchGameTab(id);
+        tabEl.innerHTML = `
+          <span>${data.name}</span>
+          <button class="close-tab" onclick="closeGameTab(event, '${id}')">&times;</button>
+        `;
+        tabsContainer.appendChild(tabEl);
+      }
+    }
+
+    function showCatalogGrid() {
+      document.querySelectorAll('.runner-view').forEach(v => v.classList.remove('active'));
       document.getElementById('libraryGameView').style.display = 'none';
       document.getElementById('libraryGridView').style.display = 'flex';
     }
