@@ -154,9 +154,11 @@
       const pass = document.getElementById('password').value;
       const errorMsg = document.getElementById('errorMsg');
 
-      if (user === "ruffletest" && pass === "Password") {
-        // Unlock access and send back to home.html
+      if (user === "admin" && pass === "Password") {
+        // Store login session
         localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'true');
+        localStorage.setItem('loggedUser', 'admin');
         window.location.href = "home.html";
       } else {
         errorMsg.style.display = 'block';
