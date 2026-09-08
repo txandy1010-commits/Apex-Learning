@@ -155,12 +155,47 @@
       const errorMsg = document.getElementById('errorMsg');
 
       if (user === "admin" && pass === "admin") {
-        // Store login session
+        // Store admin login session
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('isAdmin', 'true');
         localStorage.setItem('loggedUser', 'admin');
         window.location.href = "home.html";
-      } else {
+      } else if (user === "guest" && pass === "guest") {
+        // Store guest/regular user login session
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'false');
+        localStorage.setItem('loggedUser', 'guest');
+        window.location.href = "home.html";
+      } 
+        else if (user === "Jerm14" && pass === "Gray(14)") {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'false');
+        localStorage.setItem('loggedUser', Jerm14);
+        window.location.href = "home.html";
+      }
+      /* 
+      ===================================================================
+      TEMPLATE FOR ADDING NEW USERS (Copy & paste into the chain above)
+      ===================================================================
+
+      --- To add another ADMIN user: ---
+      else if (user === "NEW_ADMIN_USER" && pass === "NEW_ADMIN_PASS") {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'true');
+        localStorage.setItem('loggedUser', user);
+        window.location.href = "home.html";
+      }
+
+      --- To add another REGULAR user: ---
+      else if (user === "NEW_REGULAR_USER" && pass === "NEW_REGULAR_PASS") {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'false');
+        localStorage.setItem('loggedUser', user);
+        window.location.href = "home.html";
+      }
+      ===================================================================
+      */
+      else {
         errorMsg.style.display = 'block';
       }
     }
