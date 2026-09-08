@@ -49,6 +49,12 @@
       align-items: center;
     }
 
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
     .logo {
       font-size: 1.25rem;
       font-weight: 700;
@@ -63,6 +69,7 @@
       display: flex;
       gap: 1.5rem;
       list-style: none;
+      align-items: center;
     }
 
     .nav-links a {
@@ -75,6 +82,23 @@
 
     .nav-links a:hover {
       color: var(--accent);
+    }
+
+    .login-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: var(--accent-hover);
     }
 
     .hero {
@@ -512,12 +536,15 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         Apex Academic Hub
       </a>
-      <ul class="nav-links">
-        <li><a href="https://www.khanacademy.org" target="_blank">Khan Academy</a></li>
-        <li><a href="https://openstax.org" target="_blank">OpenStax Textbooks</a></li>
-        <li><a href="https://ocw.mit.edu" target="_blank">MIT OpenCourseWare</a></li>
-        <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
-      </ul>
+      <div class="nav-right">
+        <ul class="nav-links">
+          <li><a href="https://www.khanacademy.org" target="_blank">Khan Academy</a></li>
+          <li><a href="https://openstax.org" target="_blank">OpenStax Textbooks</a></li>
+          <li><a href="https://ocw.mit.edu" target="_blank">MIT OpenCourseWare</a></li>
+          <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
+        </ul>
+        <a href="login.html" class="login-btn">Login</a>
+      </div>
     </div>
   </header>
 
@@ -705,6 +732,11 @@
     let activePage = 'home';
 
     function toggleSecretHub() {
+      // Check if logged in via localStorage
+      if (localStorage.getItem('isLoggedIn') !== 'true') {
+        return; // Nothing happens if not logged in
+      }
+
       const overlay = document.getElementById('gamesOverlay');
       if (overlay.style.display === 'flex') {
         overlay.style.display = 'none';
