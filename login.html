@@ -179,6 +179,12 @@
         localStorage.setItem('loggedUser', 'RJ');
         window.location.href = "home.html";
       }
+            else if (user === "guest111" && pass === "12345sesamestreet12345") {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isAdmin', 'true');
+        localStorage.setItem('loggedUser', 'oscar');
+        window.location.href = "home.html";
+      }
       /* 
       ===================================================================
       TEMPLATE FOR ADDING NEW USERS (Copy & paste into the chain above)
