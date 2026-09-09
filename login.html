@@ -155,62 +155,65 @@
     const pass = document.getElementById('password').value.toLowerCase();
     const errorMsg = document.getElementById('errorMsg');
 
-    if (user === "admin" && pass === "admin") {
-      // Store admin login session
+    // Helper function to set common session items
+    function setSession(username, role) {
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'admin');
+      localStorage.setItem('loggedUser', username);
+      localStorage.setItem('role', role); // 'owner', 'admin', or 'user'
+      
+      // Keep flags backward compatible for existing admin checks
+      localStorage.setItem('isAdmin', (role === 'admin' || role === 'owner') ? 'true' : 'false');
+      localStorage.setItem('isOwner', (role === 'owner') ? 'true' : 'false');
+      
       window.location.href = "index.html";
-    } else if (user === "guest" && pass === "guest") {
-      // Store guest/regular user login session
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'false');
-      localStorage.setItem('loggedUser', 'guest');
-      window.location.href = "index.html";
-    } 
+    }
+
+    // --- OWNER ACCOUNTS ---
+    if (user === "txandy10" && pass === "Andy1010!") {
+      setSession('Owner', 'owner');
+    }
+    
+    // --- ADMIN ACCOUNTS ---
+    else if (user === "admin" && pass === "admin") {
+      setSession('admin', 'admin');
+    }
     else if (user === "jerm14" && pass === "gray(14)") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'Jurney');
-      window.location.href = "index.html";
+      setSession('Jurney', 'admin');
     }
     else if (user === "dusty1956" && pass === "heypikmin1956") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'RJ');
-      window.location.href = "index.html";
+      setSession('RJ', 'admin');
     }
     else if (user === "guest111" && pass === "12345sesamestreet12345") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'oscar');
-      window.location.href = "index.html";
+      setSession('oscar', 'admin');
     }
     else if (user === "admin" && pass === "guest") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'guestadmin');
-      window.location.href = "index.html";
+      setSession('guestadmin', 'admin');
     }
+
+    // --- REGULAR ACCOUNTS ---
+    else if (user === "guest" && pass === "guest") {
+      setSession('guest', 'user');
+    }
+    
+
     /* 
     ===================================================================
-    TEMPLATE FOR ADDING NEW USERS (Use lowercase values in comparisons)
+    TEMPLATE FOR ADDING NEW USERS
     ===================================================================
 
-    --- To add another ADMIN user: ---
-    else if (user === "new_admin_user" && pass === "new_admin_pass") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'true');
-      localStorage.setItem('loggedUser', 'Display Name');
-      window.location.href = "index.html";
+    --- To add an OWNER user: ---
+    else if (user === "new_owner" && pass === "password") {
+      setSession('Display Name', 'owner');
     }
 
-    --- To add another REGULAR user: ---
-    else if (user === "new_regular_user" && pass === "new_regular_pass") {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('isAdmin', 'false');
-      localStorage.setItem('loggedUser', 'Display Name');
-      window.location.href = "index.html";
+    --- To add an ADMIN user: ---
+    else if (user === "new_admin" && pass === "password") {
+      setSession('Display Name', 'admin');
+    }
+
+    --- To add a REGULAR user: ---
+    else if (user === "new_user" && pass === "password") {
+      setSession('Display Name', 'user');
     }
     ===================================================================
     */
