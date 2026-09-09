@@ -276,6 +276,14 @@
       border-color: var(--accent);
     }
 
+    .game-card.admin-card {
+      border-color: #8b5cf6;
+    }
+
+    .game-card.admin-card:hover {
+      border-color: #a855f7;
+    }
+
     .game-title {
       font-size: 0.9rem;
       font-weight: 600;
@@ -300,6 +308,14 @@
 
     .game-launch-btn:hover {
       background: var(--accent-hover);
+    }
+
+    .admin-launch-btn {
+      background: #8b5cf6;
+    }
+
+    .admin-launch-btn:hover {
+      background: #7c3aed;
     }
 
     .game-runner-bar {
@@ -406,22 +422,6 @@
       flex: 1;
       padding: 20px;
     }
-
-    .admin-action-btn {
-      background: #8b5cf6;
-      color: white;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 10px 0;
-      transition: background 0.2s;
-    }
-
-    .admin-action-btn:hover {
-      background: #7c3aed;
-    }
   </style>
 </head>
 <body>
@@ -430,10 +430,11 @@
     <div class="overlay-title-group">
       <span class="overlay-title">Terminal Access — Embedded Platform</span>
       <div class="page-tabs">
-        <button class="tab-btn active" onclick="switchPage('home')">Home</button>
-        <button class="tab-btn" onclick="switchPage(2)">New Games</button>
-        <button class="tab-btn" onclick="switchPage(3)">Old Games</button>
-        <button class="tab-btn admin-tab" id="adminSecretTabBtn" onclick="switchPage('experimental')">&#9889; Access Admin Pages</button>
+        <button class="tab-btn active" id="tabHomeBtn" onclick="switchPage('home')">Home</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchPage(2)">New Games</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchPage(3)">Old Games</button>
+        <button class="tab-btn admin-tab" id="tabMathBtn" onclick="switchPage('math')">Admin Games</button>
+        <button class="tab-btn admin-tab" id="tabExperimentalBtn" onclick="switchPage('experimental')">&#9889; Experimental Games</button>
       </div>
     </div>
     <div class="action-btn-group">
@@ -465,6 +466,13 @@
                 <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Browse over 1,000 original HTML games.</p>
               </div>
               <button class="game-launch-btn" onclick="switchPage(3)">Browse Old Games</button>
+            </div>
+            <div class="game-card admin-card" id="adminCard" style="display: none;">
+              <div>
+                <div class="game-title" style="color: #c084fc;">ADMINISTRATION SUITE</div>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Unlock restricted admin games and experimental controls.</p>
+              </div>
+              <button class="game-launch-btn admin-launch-btn" onclick="unlockAdminPages()">Access Admin Pages</button>
             </div>
           </div>
 
@@ -508,14 +516,15 @@
       </div>
     </div>
 
+    <div id="pageMath" class="page-view">
+      <iframe id="mathFrame" src="" allowfullscreen="true"></iframe>
+    </div>
+
     <div id="pageExperimental" class="page-view">
       <div class="ugs-body">
         <div class="ugs-sidebar" id="sidebar"></div>
         <div class="ugs-main-content">
-          <h1 style="text-align: center; margin-bottom: 20px;">Admin Dashboard</h1>
-          <div style="text-align: center; margin-bottom: 20px;">
-            <button class="admin-action-btn" onclick="switchPage('math')">Launch Admin Games</button>
-          </div>
+          <h1 style="text-align: center; margin-bottom: 30px;">UGS Files</h1>
           <h2 style="color: white; text-align: center; margin-bottom: 30px; font-weight: normal; font-size: 18px;">
               <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none;">
               <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isn't loading</button>
@@ -523,10 +532,6 @@
           <div id="sections-container"></div>
         </div>
       </div>
-    </div>
-
-    <div id="pageMath" class="page-view">
-      <iframe id="mathFrame" src="" allowfullscreen="true"></iframe>
     </div>
   </div>
 
@@ -560,9 +565,19 @@
     document.addEventListener('DOMContentLoaded', () => {
       const isAdmin = localStorage.getItem('isAdmin') === 'true';
       if (isAdmin) {
-        document.getElementById('adminSecretTabBtn').style.display = 'inline-block';
+        document.getElementById('adminCard').style.display = 'flex';
       }
     });
+
+    function unlockAdminPages() {
+      if (localStorage.getItem('isAdmin') !== 'true') {
+        alert("Access Denied: Admin privileges required.");
+        return;
+      }
+      document.getElementById('tabMathBtn').style.display = 'inline-block';
+      document.getElementById('tabExperimentalBtn').style.display = 'inline-block';
+      switchPage('math');
+    }
 
     function switchPage(pageKey) {
       if ((pageKey === 'experimental' || pageKey === 'math') && localStorage.getItem('isAdmin') !== 'true') {
@@ -581,24 +596,31 @@
       document.getElementById('pageExperimental').classList.remove('active');
 
       if (pageKey === 'home') {
-        tabs[0].classList.add('active');
+        document.getElementById('tabHomeBtn').classList.add('active');
         document.getElementById('pageHome').classList.add('active');
       } else if (pageKey === 2) {
-        tabs[1].classList.add('active');
+        document.getElementById('tab2Btn').classList.add('active');
         document.getElementById('page2').classList.add('active');
         if (!page2Loaded) {
           document.getElementById('gameFrame1').src = primaryGameUrl;
           page2Loaded = true;
         }
       } else if (pageKey === 3) {
-        tabs[2].classList.add('active');
+        document.getElementById('tab3Btn').classList.add('active');
         document.getElementById('page3').classList.add('active');
         if (!page3Loaded) {
           fetchRepositoryGames();
           page3Loaded = true;
         }
+      } else if (pageKey === 'math') {
+        document.getElementById('tabMathBtn').classList.add('active');
+        document.getElementById('pageMath').classList.add('active');
+        if (!mathLoaded) {
+          document.getElementById('mathFrame').src = 'math.html';
+          mathLoaded = true;
+        }
       } else if (pageKey === 'experimental') {
-        document.getElementById('adminSecretTabBtn').classList.add('active');
+        document.getElementById('tabExperimentalBtn').classList.add('active');
         document.getElementById('pageExperimental').classList.add('active');
         if (!experimentalLoaded) {
           const s1 = document.createElement('script');
@@ -610,13 +632,6 @@
           document.body.appendChild(s2);
 
           experimentalLoaded = true;
-        }
-      } else if (pageKey === 'math') {
-        document.getElementById('adminSecretTabBtn').classList.add('active');
-        document.getElementById('pageMath').classList.add('active');
-        if (!mathLoaded) {
-          document.getElementById('mathFrame').src = 'math.html';
-          mathLoaded = true;
         }
       }
     }
