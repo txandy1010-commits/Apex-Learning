@@ -155,13 +155,12 @@
     const pass = document.getElementById('password').value.toLowerCase();
     const errorMsg = document.getElementById('errorMsg');
 
-    // Helper function to set common session items
+    // Helper function to set session storage
     function setSession(username, role) {
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedUser', username);
       localStorage.setItem('role', role); // 'owner', 'admin', or 'user'
       
-      // Keep flags backward compatible for existing admin checks
       localStorage.setItem('isAdmin', (role === 'admin' || role === 'owner') ? 'true' : 'false');
       localStorage.setItem('isOwner', (role === 'owner') ? 'true' : 'false');
       
@@ -169,7 +168,8 @@
     }
 
     // --- OWNER ACCOUNTS ---
-    if (user === "txandy10" && pass === "Andy1010!") {
+    // Fixed: 'Andy1010!' changed to lowercase 'andy1010!'
+    if (user === "txandy10" && pass === "andy1010!") {
       setSession('Owner', 'owner');
     }
     
@@ -177,6 +177,7 @@
     else if (user === "admin" && pass === "admin") {
       setSession('admin', 'admin');
     }
+    // Fixed: 'gray(14)' is already lowercase
     else if (user === "jerm14" && pass === "gray(14)") {
       setSession('Jurney', 'admin');
     }
@@ -194,29 +195,7 @@
     else if (user === "guest" && pass === "guest") {
       setSession('guest', 'user');
     }
-    
 
-    /* 
-    ===================================================================
-    TEMPLATE FOR ADDING NEW USERS
-    ===================================================================
-
-    --- To add an OWNER user: ---
-    else if (user === "new_owner" && pass === "password") {
-      setSession('Display Name', 'owner');
-    }
-
-    --- To add an ADMIN user: ---
-    else if (user === "new_admin" && pass === "password") {
-      setSession('Display Name', 'admin');
-    }
-
-    --- To add a REGULAR user: ---
-    else if (user === "new_user" && pass === "password") {
-      setSession('Display Name', 'user');
-    }
-    ===================================================================
-    */
     else {
       errorMsg.style.display = 'block';
     }
