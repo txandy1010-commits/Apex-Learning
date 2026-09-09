@@ -1,0 +1,1 @@
+This was made with 100% AI you can use it to make an unblocked site that works with you school. https://apex-learning-three.vercel.app/index.html is a website that is unblocked right now. user username guest and pass guest to access .
