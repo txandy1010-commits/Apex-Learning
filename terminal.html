@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Access — Embedded Platform</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --bg: #090d16;
+      --surface: #0f172a;
+      --text: #f8fafc;
+      --border: #1e293b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .overlay-bar {
+      height: 50px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.5rem;
+    }
+
+    .overlay-title-group {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .overlay-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #38bdf8;
+    }
+
+    .page-tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .tab-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: white;
+      background: #334155;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .tab-btn.admin-tab {
+      display: none;
+      background: #8b5cf6;
+      color: white;
+      border-color: #7c3aed;
+    }
+
+    .tab-btn.admin-tab.active {
+      background: #7c3aed;
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .fullscreen-btn {
+      background: #334155;
+      color: white;
+      border: 1px solid #475569;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .fullscreen-btn:hover {
+      background: #475569;
+    }
+
+    .close-btn {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .close-btn:hover {
+      background: #b91c1c;
+    }
+
+    .overlay-content {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 50px);
+      position: relative;
+    }
+
+    .page-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .page-view.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    .home-container, .library-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #090d16;
+      color: #f8fafc;
+      overflow-y: auto;
+    }
+
+    .home-hero {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      padding: 3rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .home-hero h2 {
+      font-size: 2rem;
+      color: #38bdf8;
+      margin-bottom: 0.5rem;
+    }
+
+    .home-hero p {
+      color: #94a3b8;
+      font-size: 1rem;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .home-content {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+    }
+
+    .home-section-title {
+      font-size: 1.25rem;
+      color: #f8fafc;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-wrapper {
+      margin-top: 2rem;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .form-wrapper iframe {
+      border-radius: 6px;
+      background: #ffffff;
+      max-width: 100%;
+      height: 1000px;
+    }
+
+    .library-header {
+      padding: 1rem 1.5rem;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .status-text {
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+
+    .library-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .game-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .game-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .game-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+      word-break: break-word;
+    }
+
+    .game-launch-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 0.75rem;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .game-launch-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .game-runner-bar {
+      height: 45px;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+    }
+
+    .active-games-tabs {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      align-items: center;
+      flex: 1;
+      margin-right: 1rem;
+    }
+
+    .game-tab {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 0.3rem 0.7rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .game-tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .game-tab .close-tab {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .game-tab .close-tab:hover {
+      color: #fca5a5;
+    }
+
+    .runner-iframe-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: calc(100% - 45px);
+    }
+
+    .runner-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .runner-view.active {
+      display: block;
+    }
+
+    .secret-period-trigger {
+      cursor: pointer;
+      color: inherit;
+      user-select: none;
+    }
+
+    .ugs-body {
+      background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow-y: auto;
+    }
+
+    .ugs-sidebar {
+      position: sticky;
+      left: 0;
+      top: 0;
+      width: 80px;
+      height: 100%;
+      min-height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+
+    .ugs-main-content {
+      margin-left: 20px;
+      flex: 1;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="overlay-bar">
+    <div class="overlay-title-group">
+      <span class="overlay-title">Terminal Access — Embedded Platform</span>
+      <div class="page-tabs">
+        <button class="tab-btn active" onclick="switchPage('home')">Home</button>
+        <button class="tab-btn" onclick="switchPage(2)">New Games</button>
+        <button class="tab-btn" onclick="switchPage(3)">Old Games</button>
+        <button class="tab-btn admin-tab" id="adminSecretTabBtn" onclick="switchPage('experimental')">&#9889; Experimental Overpowerd Testing</button>
+      </div>
+    </div>
+    <div class="action-btn-group">
+      <button id="headerFullscreenBtn" class="fullscreen-btn" onclick="triggerActiveFullscreen()">Fullscreen</button>
+      <a href="index.html" class="close-btn">Return to Portal</a>
+    </div>
+  </div>
+
+  <div class="overlay-content">
+    <div id="pageHome" class="page-view active">
+      <div class="home-container" id="homeViewContainer">
+        <div class="home-hero">
+          <h2>Welcome to Apex Learning Secret Games</h2>
+          <p>Access terminal suites, arcade titles, and embedded resources<span class="secret-period-trigger" onclick="triggerAdminSecretPage(event)">.</span></p>
+        </div>
+        <div class="home-content">
+          <h3 class="home-section-title">Quick Access Platforms</h3>
+          <div class="grid">
+            <div class="game-card">
+              <div>
+                <div class="game-title">NEW GAMES PLATFORM</div>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Launch the primary high-speed game terminal.</p>
+              </div>
+              <button class="game-launch-btn" onclick="switchPage(2)">Open New Games</button>
+            </div>
+            <div class="game-card">
+              <div>
+                <div class="game-title">OLD GAMES CATALOG</div>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Browse over 1,000 original HTML games.</p>
+              </div>
+              <button class="game-launch-btn" onclick="switchPage(3)">Browse Old Games</button>
+            </div>
+          </div>
+
+          <div class="form-wrapper">
+            <h3 class="home-section-title" style="width: 100%; text-align: center;">Game Suggestions</h3>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdxWPA8aFHRnleDsm1L8pXHRa81neTVbAdBhN_ltMWGzQSfLw/viewform?embedded=true" width="640" height="1000" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page2" class="page-view">
+      <div style="height: 100%; display: flex; flex-direction: column;">
+        <div class="library-header">
+          <input type="text" class="search-input" placeholder="Search games..." oninput="filterNewGames(this.value)">
+        </div>
+        <iframe id="gameFrame1" src="" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+      </div>
+    </div>
+
+    <div id="page3" class="page-view">
+      <div class="library-container">
+        <div id="libraryGridView" style="display: flex; flex-direction: column; height: 100%;">
+          <div class="library-header">
+            <input type="text" id="gameSearch" class="search-input" placeholder="Search games..." oninput="filterGames()">
+            <span id="gameCount" class="status-text">Loading catalog...</span>
+          </div>
+          <div class="library-grid" id="gamesGrid"></div>
+        </div>
+
+        <div id="libraryGameView" style="display: none; flex-direction: column; height: 100%;">
+          <div class="game-runner-bar">
+            <div style="display: flex; align-items: center; gap: 0.8rem; flex: 1; overflow: hidden;">
+              <button class="fullscreen-btn" onclick="showCatalogGrid()">&larr; Catalog</button>
+              <div class="active-games-tabs" id="activeGamesTabs"></div>
+            </div>
+            <button class="fullscreen-btn" onclick="toggleActiveRunnerFullscreen()">Fullscreen</button>
+          </div>
+          <div class="runner-iframe-container" id="runnerIframeContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pageExperimental" class="page-view">
+      <div class="ugs-body">
+        <div class="ugs-sidebar" id="sidebar"></div>
+        <div class="ugs-main-content">
+          <h1 style="text-align: center; margin-bottom: 30px;">UGS Files</h1>
+          <h2 style="color: white; text-align: center; margin-bottom: 30px; font-weight: normal; font-size: 18px;">
+              <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none;">
+              <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isnt loading</button>
+          </h2> 
+          <div id="sections-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Access Control check
+    if (localStorage.getItem('isLoggedIn') !== 'true') {
+      window.location.href = 'index.html';
+    }
+
+    const primaryGameUrl = "https://moregames-seven.vercel.app/ef.html";
+    const vercelBaseUrl = "https://1000-htmlgames.vercel.app/";
+    const githubApiUrl = "https://api.github.com/repos/txandy1010-commits/1000HTMLGAMES/contents";
+
+    const excludedFiles = new Set([
+      "HTML GAMES.html",
+      "Home Page.html",
+      "Homepage.html",
+      "Index.html",
+      "README.md",
+      "SPEEDMATH.html",
+      "UpdateLogs.html"
+    ]);
+
+    let page2Loaded = false;
+    let page3Loaded = false;
+    let experimentalLoaded = false;
+    let activePage = 'home';
+    let openedGames = {};
+    let activeTabId = null;
+
+    function triggerAdminSecretPage(event) {
+      if (event) event.stopPropagation();
+
+      const isAdmin = localStorage.getItem('isAdmin') === 'true';
+      if (isAdmin) {
+        document.getElementById('adminSecretTabBtn').style.display = 'inline-block';
+        switchPage('experimental');
+      } else {
+        alert("Access Denied: Admin privileges required.");
+      }
+    }
+
+    function switchPage(pageKey) {
+      activePage = pageKey;
+      const tabs = document.querySelectorAll('.page-tabs .tab-btn');
+      tabs.forEach(tab => tab.classList.remove('active'));
+
+      document.getElementById('pageHome').classList.remove('active');
+      document.getElementById('page2').classList.remove('active');
+      document.getElementById('page3').classList.remove('active');
+      document.getElementById('pageExperimental').classList.remove('active');
+
+      if (pageKey === 'home') {
+        tabs[0].classList.add('active');
+        document.getElementById('pageHome').classList.add('active');
+      } else if (pageKey === 2) {
+        tabs[1].classList.add('active');
+        document.getElementById('page2').classList.add('active');
+        if (!page2Loaded) {
+          document.getElementById('gameFrame1').src = primaryGameUrl;
+          page2Loaded = true;
+        }
+      } else if (pageKey === 3) {
+        tabs[2].classList.add('active');
+        document.getElementById('page3').classList.add('active');
+        if (!page3Loaded) {
+          fetchRepositoryGames();
+          page3Loaded = true;
+        }
+      } else if (pageKey === 'experimental') {
+        document.getElementById('adminSecretTabBtn').classList.add('active');
+        document.getElementById('pageExperimental').classList.add('active');
+        if (!experimentalLoaded) {
+          const s1 = document.createElement('script');
+          s1.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/searchbut.js';
+          document.body.appendChild(s1);
+
+          const s2 = document.createElement('script');
+          s2.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js';
+          document.body.appendChild(s2);
+
+          experimentalLoaded = true;
+        }
+      }
+    }
+
+    function triggerActiveFullscreen() {
+      if (activePage === 'home') {
+        toggleFullscreen('homeViewContainer');
+      } else if (activePage === 2) {
+        toggleFullscreen('gameFrame1');
+      } else if (activePage === 3) {
+        const activeRunner = document.getElementById('libraryGameView').style.display === 'flex';
+        toggleFullscreen(activeRunner ? 'runnerIframeContainer' : 'page3');
+      } else if (activePage === 'experimental') {
+        toggleFullscreen('pageExperimental');
+      }
+    }
+
+    function toggleActiveRunnerFullscreen() {
+      toggleFullscreen('runnerIframeContainer');
+    }
+
+    function toggleFullscreen(elementId) {
+      const elem = document.getElementById(elementId);
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        elem.msRequestFullscreen();
+      }
+    }
+
+    async function fetchRepositoryGames() {
+      const grid = document.getElementById('gamesGrid');
+      const countEl = document.getElementById('gameCount');
+
+      try {
+        const response = await fetch(githubApiUrl);
+        if (!response.ok) throw new Error('Network response failed');
+        const files = await response.json();
+
+        grid.innerHTML = '';
+        let validGamesCount = 0;
+
+        files.forEach(item => {
+          if (item.type === 'file' && item.name.endsWith('.html') && !excludedFiles.has(item.name)) {
+            validGamesCount++;
+            const cleanName = item.name.replace('.html', '').replace(/[-_]/g, ' ');
+            
+            const card = document.createElement('div');
+            card.className = 'game-card';
+            card.setAttribute('data-filename', item.name);
+            card.innerHTML = `
+              <div>
+                <div class="game-title">${cleanName}</div>
+              </div>
+              <button class="game-launch-btn" onclick="launchLibraryGame('${encodeURIComponent(item.name)}', '${cleanName.replace(/'/g, "\\'")}')">Launch Game</button>
+            `;
+            grid.appendChild(card);
+          }
+        });
+
+        countEl.textContent = `${validGamesCount} games available`;
+      } catch (err) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; color: #ef4444;">Failed to load catalog from repository.</p>';
+        countEl.textContent = 'Error loading games';
+      }
+    }
+
+    function filterGames() {
+      const query = document.getElementById('gameSearch').value.toLowerCase();
+      const cards = document.querySelectorAll('#gamesGrid .game-card');
+      cards.forEach(card => {
+        const title = card.querySelector('.game-title').textContent.toLowerCase();
+        if (title.includes(query)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function filterNewGames(query) {
+      const frame = document.getElementById('gameFrame1');
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'search', query: query }, '*');
+      }
+    }
+
+    function launchLibraryGame(filename, cleanName) {
+      const tabId = 'game_' + filename.replace(/[^a-zA-Z0-9]/g, '_');
+      const gameUrl = vercelBaseUrl + filename;
+
+      document.getElementById('libraryGridView').style.display = 'none';
+      document.getElementById('libraryGameView').style.display = 'flex';
+
+      if (!openedGames[tabId]) {
+        openedGames[tabId] = { name: cleanName, url: gameUrl };
+
+        const container = document.getElementById('runnerIframeContainer');
+        const iframeView = document.createElement('iframe');
+        iframeView.className = 'runner-view';
+        iframeView.id = tabId + '_view';
+        iframeView.src = gameUrl;
+        iframeView.setAttribute('allowfullscreen', 'true');
+        iframeView.setAttribute('webkitallowfullscreen', 'true');
+        iframeView.setAttribute('mozallowfullscreen', 'true');
+        container.appendChild(iframeView);
+      }
+
+      switchGameTab(tabId);
+    }
+
+    function switchGameTab(tabId) {
+      activeTabId = tabId;
+
+      document.querySelectorAll('.runner-view').forEach(view => {
+        view.classList.remove('active');
+      });
+      const targetView = document.getElementById(tabId + '_view');
+      if (targetView) targetView.classList.add('active');
+
+      renderTabsUI();
+    }
+
+    function closeGameTab(event, tabId) {
+      event.stopPropagation();
+
+      const viewEl = document.getElementById(tabId + '_view');
+      if (viewEl) viewEl.remove();
+
+      delete openedGames[tabId];
+
+      const remainingKeys = Object.keys(openedGames);
+      if (remainingKeys.length > 0) {
+        switchGameTab(remainingKeys[remainingKeys.length - 1]);
+      } else {
+        showCatalogGrid();
+      }
+    }
+
+    function renderTabsUI() {
+      const tabsContainer = document.getElementById('activeGamesTabs');
+      tabsContainer.innerHTML = '';
+
+      for (const [id, data] of Object.entries(openedGames)) {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'game-tab' + (id === activeTabId ? ' active' : '');
+        tabEl.onclick = () => switchGameTab(id);
+        tabEl.innerHTML = `
+          <span>${data.name}</span>
+          <button class="close-tab" onclick="closeGameTab(event, '${id}')">&times;</button>
+        `;
+        tabsContainer.appendChild(tabEl);
+      }
+    }
+
+    function showCatalogGrid() {
+      document.querySelectorAll('.runner-view').forEach(v => v.classList.remove('active'));
+      document.getElementById('libraryGameView').style.display = 'none';
+      document.getElementById('libraryGridView').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
