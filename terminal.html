@@ -372,12 +372,6 @@
       display: block;
     }
 
-    .secret-period-trigger {
-      cursor: pointer;
-      color: inherit;
-      user-select: none;
-    }
-
     .ugs-body {
       background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
       min-height: 100%;
@@ -412,6 +406,22 @@
       flex: 1;
       padding: 20px;
     }
+
+    .admin-action-btn {
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 0;
+      transition: background 0.2s;
+    }
+
+    .admin-action-btn:hover {
+      background: #7c3aed;
+    }
   </style>
 </head>
 <body>
@@ -423,7 +433,7 @@
         <button class="tab-btn active" onclick="switchPage('home')">Home</button>
         <button class="tab-btn" onclick="switchPage(2)">New Games</button>
         <button class="tab-btn" onclick="switchPage(3)">Old Games</button>
-        <button class="tab-btn admin-tab" id="adminSecretTabBtn" onclick="switchPage('experimental')">&#9889; Experimental Overpowerd Testing</button>
+        <button class="tab-btn admin-tab" id="adminSecretTabBtn" onclick="switchPage('experimental')">&#9889; Access Admin Pages</button>
       </div>
     </div>
     <div class="action-btn-group">
@@ -436,8 +446,8 @@
     <div id="pageHome" class="page-view active">
       <div class="home-container" id="homeViewContainer">
         <div class="home-hero">
-          <h2>Welcome to Apex Learning Secret Games</h2>
-          <p>Access terminal suites, arcade titles, and embedded resources<span class="secret-period-trigger" onclick="triggerAdminSecretPage(event)">.</span></p>
+          <h2>Welcome to Apex Learning Terminal</h2>
+          <p>Access terminal suites, arcade titles, and embedded resources.</p>
         </div>
         <div class="home-content">
           <h3 class="home-section-title">Quick Access Platforms</h3>
@@ -502,19 +512,25 @@
       <div class="ugs-body">
         <div class="ugs-sidebar" id="sidebar"></div>
         <div class="ugs-main-content">
-          <h1 style="text-align: center; margin-bottom: 30px;">UGS Files</h1>
+          <h1 style="text-align: center; margin-bottom: 20px;">Admin Dashboard</h1>
+          <div style="text-align: center; margin-bottom: 20px;">
+            <button class="admin-action-btn" onclick="switchPage('math')">Launch Admin Games</button>
+          </div>
           <h2 style="color: white; text-align: center; margin-bottom: 30px; font-weight: normal; font-size: 18px;">
               <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none;">
-              <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isnt loading</button>
+              <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isn't loading</button>
           </h2> 
           <div id="sections-container"></div>
         </div>
       </div>
     </div>
+
+    <div id="pageMath" class="page-view">
+      <iframe id="mathFrame" src="" allowfullscreen="true"></iframe>
+    </div>
   </div>
 
   <script>
-    // Access Control check
     if (localStorage.getItem('isLoggedIn') !== 'true') {
       window.location.href = 'index.html';
     }
@@ -535,24 +551,25 @@
 
     let page2Loaded = false;
     let page3Loaded = false;
+    let mathLoaded = false;
     let experimentalLoaded = false;
     let activePage = 'home';
     let openedGames = {};
     let activeTabId = null;
 
-    function triggerAdminSecretPage(event) {
-      if (event) event.stopPropagation();
-
+    document.addEventListener('DOMContentLoaded', () => {
       const isAdmin = localStorage.getItem('isAdmin') === 'true';
       if (isAdmin) {
         document.getElementById('adminSecretTabBtn').style.display = 'inline-block';
-        switchPage('experimental');
-      } else {
-        alert("Access Denied: Admin privileges required.");
       }
-    }
+    });
 
     function switchPage(pageKey) {
+      if ((pageKey === 'experimental' || pageKey === 'math') && localStorage.getItem('isAdmin') !== 'true') {
+        alert("Access Denied: Admin privileges required.");
+        return;
+      }
+
       activePage = pageKey;
       const tabs = document.querySelectorAll('.page-tabs .tab-btn');
       tabs.forEach(tab => tab.classList.remove('active'));
@@ -560,6 +577,7 @@
       document.getElementById('pageHome').classList.remove('active');
       document.getElementById('page2').classList.remove('active');
       document.getElementById('page3').classList.remove('active');
+      document.getElementById('pageMath').classList.remove('active');
       document.getElementById('pageExperimental').classList.remove('active');
 
       if (pageKey === 'home') {
@@ -593,6 +611,13 @@
 
           experimentalLoaded = true;
         }
+      } else if (pageKey === 'math') {
+        document.getElementById('adminSecretTabBtn').classList.add('active');
+        document.getElementById('pageMath').classList.add('active');
+        if (!mathLoaded) {
+          document.getElementById('mathFrame').src = 'math.html';
+          mathLoaded = true;
+        }
       }
     }
 
@@ -604,6 +629,8 @@
       } else if (activePage === 3) {
         const activeRunner = document.getElementById('libraryGameView').style.display === 'flex';
         toggleFullscreen(activeRunner ? 'runnerIframeContainer' : 'page3');
+      } else if (activePage === 'math') {
+        toggleFullscreen('mathFrame');
       } else if (activePage === 'experimental') {
         toggleFullscreen('pageExperimental');
       }
