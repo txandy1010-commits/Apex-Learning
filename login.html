@@ -139,7 +139,7 @@
         <input type="password" id="password" required placeholder="Enter password">
       </div>
 
-      <button type="submit" class="submit-btn">Sign In</button>
+      <button type="submit" class="submit-btn" id="submitBtn">Sign In</button>
       <div id="errorMsg" class="error-msg">Invalid username or password.</div>
     </form>
 
@@ -147,62 +147,54 @@
   </div>
 
   <script>
-  function handleFormSubmit(event) {
+  async function handleFormSubmit(event) {
     event.preventDefault();
 
-    // Convert inputs to lowercase for case-insensitive matching
-    const user = document.getElementById('username').value.toLowerCase();
-    const pass = document.getElementById('password').value.toLowerCase();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
     const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
 
-    // Helper function to set session storage
-    function setSession(username, role) {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedUser', username);
-      localStorage.setItem('role', role); // 'owner', 'admin', or 'user'
-      
-      localStorage.setItem('isAdmin', (role === 'admin' || role === 'owner') ? 'true' : 'false');
-      localStorage.setItem('isOwner', (role === 'owner') ? 'true' : 'false');
-      
-      window.location.href = "index.html";
-    }
+    // Reset UI state
+    errorMsg.style.display = 'none';
+    submitBtn.innerText = 'Signing in...';
+    submitBtn.disabled = true;
 
-    // --- OWNER ACCOUNTS ---
-    // Fixed: 'Andy1010!' changed to lowercase 'andy1010!'
-    if (user === "txandy10" && pass === "andy1010!") {
-      setSession('Owner', 'owner');
-    }
-    
-    // --- ADMIN ACCOUNTS ---
-    else if (user === "admin" && pass === "admin") {
-      setSession('admin', 'admin');
-    }
-    // Fixed: 'gray(14)' is already lowercase
-    else if (user === "jerm14" && pass === "gray(14)") {
-      setSession('Jurney', 'admin');
-    }
-    else if (user === "dusty1956" && pass === "heypikmin1956") {
-      setSession('RJ', 'admin');
-    }
-    else if (user === "guest111" && pass === "12345sesamestreet12345") {
-      setSession('oscar', 'admin');
-    }
-    else if (user === "admin" && pass === "guest") {
-      setSession('guestadmin', 'admin');
-    }
-      else if (user === "Sangthafake676767" && pass === "fakesangtha") {
-      setSession('sangtha', 'admin');
+    try {
+      // Send credentials securely to your Vercel backend function
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Save user role and name to local storage based on database response
+        const role = result.user.role;
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('loggedUser', result.user.username);
+        localStorage.setItem('role', role);
+        localStorage.setItem('isAdmin', (role === 'admin' || role === 'owner') ? 'true' : 'false');
+        localStorage.setItem('isOwner', (role === 'owner') ? 'true' : 'false');
+
+        // Redirect to main portal
+        window.location.href = "index.html";
+      } else {
+        errorMsg.innerText = result.message || 'Invalid username or password.';
+        errorMsg.style.display = 'block';
       }
-
-    // --- REGULAR ACCOUNTS ---
-    else if (user === "guest" && pass === "guest") {
-      setSession('guest', 'user');
-    }
-
-    else {
+    } catch (error) {
+      errorMsg.innerText = 'Server connection error. Please try again.';
       errorMsg.style.display = 'block';
+    } finally {
+      submitBtn.innerText = 'Sign In';
+      submitBtn.disabled = false;
     }
   }
-</script>
+  </script>
 </body>
 </html>
