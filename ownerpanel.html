@@ -65,6 +65,7 @@
       border-radius: 12px;
       padding: 1.5rem;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      margin-bottom: 2rem;
     }
 
     .card-header {
@@ -93,6 +94,20 @@
 
     .refresh-btn:hover {
       opacity: 0.9;
+    }
+
+    .delete-btn {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .delete-btn:hover {
+      opacity: 0.85;
     }
 
     table {
@@ -144,6 +159,25 @@
       color: var(--danger);
       margin-bottom: 0.5rem;
     }
+
+    .form-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .form-input, .form-select {
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .form-input {
+      flex: 1;
+      min-width: 150px;
+    }
   </style>
 </head>
 <body>
@@ -165,6 +199,7 @@
       <a href="index.html" class="back-btn">&larr; Return to Main Portal</a>
     </div>
 
+    <!-- Active Sessions Card -->
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">Live Active Sessions</h2>
@@ -187,10 +222,51 @@
         </tbody>
       </table>
     </div>
+
+    <!-- User Account Management Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">User Account Management</h2>
+        <button class="refresh-btn" onclick="loadRegisteredUsers()">Refresh Users</button>
+      </div>
+
+      <!-- Create User Form -->
+      <form id="createUserForm" class="form-group">
+        <input type="text" id="newUsername" class="form-input" placeholder="New Username" required>
+        <input type="password" id="newPassword" class="form-input" placeholder="New Password" required>
+        <select id="newRole" class="form-select">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
+        </select>
+        <button type="submit" class="refresh-btn">Create User</button>
+      </form>
+
+      <!-- Registered Users Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Created At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="registeredUsersTableBody">
+          <tr>
+            <td colspan="4" style="color: #94a3b8;">Loading user database...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script>
-    // 1. Authorization Check (Runs immediately)
+    // 1. Owner Secret Key definition (stored for API headers)
+    const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
+    localStorage.setItem('ownerSecretKey', OWNER_SECRET);
+
+    // 2. Authorization Check (Runs immediately)
     const isOwner = localStorage.getItem('isOwner') === 'true';
 
     if (!isOwner) {
@@ -198,15 +274,18 @@
     } else {
       document.getElementById('ownerContent').style.display = 'block';
       loadActiveUsers();
+      loadRegisteredUsers();
       setInterval(loadActiveUsers, 10000); // Auto-refresh active users every 10 seconds
     }
 
-    // 2. Fetch Active Users from Vercel Serverless API
+    // 3. Fetch Active Users from Vercel Serverless API
     async function loadActiveUsers() {
       if (!isOwner) return;
 
       try {
-        const response = await fetch('/api/active-users');
+        const response = await fetch('/api/active-users', {
+          headers: { 'x-owner-auth': OWNER_SECRET }
+        });
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -234,7 +313,112 @@
       }
     }
 
-    // 3. Heartbeat script to record the owner's presence on this page
+    // 4. Fetch Registered Users from Database
+    async function loadRegisteredUsers() {
+      if (!isOwner) return;
+
+      try {
+        const response = await fetch('/api/admin-users', {
+          headers: { 'x-owner-auth': OWNER_SECRET }
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const tableBody = document.getElementById('registeredUsersTableBody');
+
+          if (data.users.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">No registered users found.</td></tr>';
+            return;
+          }
+
+          tableBody.innerHTML = data.users.map(user => `
+            <tr>
+              <td style="font-weight: 600;">${user.username}</td>
+              <td>
+                <select onchange="updateUserRole('${user.username}', this.value)" style="padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">
+                  <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                  <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                  <option value="owner" ${user.role === 'owner' ? 'selected' : ''}>Owner</option>
+                </select>
+              </td>
+              <td style="color: #64748b;">${new Date(user.created_at).toLocaleDateString()}</td>
+              <td>
+                <button class="delete-btn" onclick="deleteUser('${user.username}')">Delete</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load registered users:', err);
+      }
+    }
+
+    // 5. Create User Handler
+    document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('newUsername').value;
+      const password = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+
+      const response = await fetch('/api/admin-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-owner-auth': OWNER_SECRET
+        },
+        body: JSON.stringify({ username, password, role })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('User created successfully!');
+        document.getElementById('createUserForm').reset();
+        loadRegisteredUsers();
+      } else {
+        alert(data.message || 'Failed to create user.');
+      }
+    });
+
+    // 6. Update User Role Handler
+    async function updateUserRole(username, newRole) {
+      const response = await fetch('/api/admin-users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-owner-auth': OWNER_SECRET
+        },
+        body: JSON.stringify({ username, newRole })
+      });
+
+      if (response.ok) {
+        loadRegisteredUsers();
+      } else {
+        alert('Failed to update user role.');
+      }
+    }
+
+    // 7. Delete User Handler
+    async function deleteUser(username) {
+      if (!confirm(`Are you sure you want to delete account "${username}"?`)) return;
+
+      const response = await fetch('/api/admin-users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-owner-auth': OWNER_SECRET
+        },
+        body: JSON.stringify({ username })
+      });
+
+      if (response.ok) {
+        loadRegisteredUsers();
+        loadActiveUsers();
+      } else {
+        alert('Failed to delete user.');
+      }
+    }
+
+    // 8. Heartbeat Script to Record Owner Presence
     function sendHeartbeat() {
       const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
       const username = localStorage.getItem('loggedUser');
