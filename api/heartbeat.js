@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { username, role } = req.body;
+  const { username, role, page } = req.body;
 
   if (!username) {
     return res.status(400).json({ message: 'Username is required' });
@@ -15,12 +15,14 @@ export default async function handler(req, res) {
     const sql = neon(process.env.DATABASE_URL);
     const cleanUsername = username.trim().toLowerCase();
 
-    // Update last_seen if user exists, or insert if they don't
     await sql`
-      INSERT INTO active_sessions (username, role, last_seen)
-      VALUES (${cleanUsername}, ${role || 'user'}, CURRENT_TIMESTAMP)
+      INSERT INTO active_sessions (username, role, current_page, last_seen)
+      VALUES (${cleanUsername}, ${role || 'user'}, ${page || 'Unknown'}, CURRENT_TIMESTAMP)
       ON CONFLICT (username) 
-      DO UPDATE SET last_seen = CURRENT_TIMESTAMP, role = EXCLUDED.role;
+      DO UPDATE SET 
+        last_seen = CURRENT_TIMESTAMP, 
+        role = EXCLUDED.role,
+        current_page = EXCLUDED.current_page;
     `;
 
     return res.status(200).json({ success: true });
