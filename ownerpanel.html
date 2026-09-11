@@ -13,185 +13,37 @@
       --text: #334155;
       --border: #e2e8f0;
       --danger: #ef4444;
+      --warning: #f59e0b;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      padding: 2rem;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .header h1 {
-      font-size: 1.75rem;
-      color: var(--primary);
-    }
-
-    .back-btn {
-      color: #64748b;
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-
-    .back-btn:hover {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      margin-bottom: 2rem;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      color: var(--primary);
-    }
-
-    .refresh-btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-
-    .refresh-btn:hover {
-      opacity: 0.9;
-    }
-
-    .delete-btn {
-      background: var(--danger);
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .delete-btn:hover {
-      opacity: 0.85;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
-    th {
-      padding: 0.75rem 0.5rem;
-      border-bottom: 2px solid var(--border);
-      color: #64748b;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    td {
-      padding: 0.85rem 0.5rem;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.9rem;
-    }
-
-    .badge-role {
-      background: #e0f2fe;
-      color: #0369a1;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    code {
-      background: #f1f5f9;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      color: #475569;
-    }
-
-    #accessDenied {
-      display: none;
-      text-align: center;
-      padding: 4rem 2rem;
-    }
-
-    #accessDenied h2 {
-      color: var(--danger);
-      margin-bottom: 0.5rem;
-    }
-
-    .form-group {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-    }
-
-    .form-input, .form-select {
-      padding: 0.5rem;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    .form-input {
-      flex: 1;
-      min-width: 150px;
-    }
-
-    .real-name-input {
-      padding: 4px 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      font-size: 0.85rem;
-      width: 100%;
-      max-width: 180px;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .header h1 { font-size: 1.75rem; color: var(--primary); }
+    .back-btn { color: #64748b; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+    .back-btn:hover { color: var(--accent); text-decoration: underline; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 2rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.1rem; color: var(--primary); }
+    .refresh-btn { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 600; }
+    .delete-btn { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .kick-btn { background: var(--warning); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 0.75rem 0.5rem; border-bottom: 2px solid var(--border); color: #64748b; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 0.85rem 0.5rem; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .badge-role { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #475569; }
+    #accessDenied { display: none; text-align: center; padding: 4rem 2rem; }
+    #accessDenied h2 { color: var(--danger); margin-bottom: 0.5rem; }
+    .form-group { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .form-input, .form-select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+    .form-input { flex: 1; min-width: 150px; }
+    .real-name-input { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; width: 100%; max-width: 180px; }
   </style>
 </head>
 <body>
 
-  <!-- Access Denied Message -->
   <div id="accessDenied" class="container">
     <div class="card">
       <h2>Access Restricted</h2>
@@ -201,7 +53,6 @@
     </div>
   </div>
 
-  <!-- Main Owner Dashboard -->
   <div id="ownerContent" class="container" style="display: none;">
     <div class="header">
       <h1>Owner Control Panel</h1>
@@ -222,12 +73,11 @@
             <th>Role</th>
             <th>Current Page</th>
             <th>Last Active</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="activeUsersTableBody">
-          <tr>
-            <td colspan="4" style="color: #94a3b8;">Loading active user data...</td>
-          </tr>
+          <tr><td colspan="5" style="color: #94a3b8;">Loading active user data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -239,7 +89,6 @@
         <button class="refresh-btn" onclick="loadRegisteredUsers()">Refresh Users</button>
       </div>
 
-      <!-- Create User Form -->
       <form id="createUserForm" class="form-group">
         <input type="text" id="newUsername" class="form-input" placeholder="New Username" required>
         <input type="password" id="newPassword" class="form-input" placeholder="New Password" required>
@@ -251,7 +100,6 @@
         <button type="submit" class="refresh-btn">Create User</button>
       </form>
 
-      <!-- Registered Users Table -->
       <table>
         <thead>
           <tr>
@@ -263,20 +111,37 @@
           </tr>
         </thead>
         <tbody id="registeredUsersTableBody">
+          <tr><td colspan="5" style="color: #94a3b8;">Loading user database...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Security Audit Logs Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Security & Audit Logs</h2>
+        <button class="refresh-btn" onclick="loadAuditLogs()">Refresh Logs</button>
+      </div>
+
+      <table>
+        <thead>
           <tr>
-            <td colspan="5" style="color: #94a3b8;">Loading user database...</td>
+            <th>User</th>
+            <th>Action</th>
+            <th>Timestamp</th>
           </tr>
+        </thead>
+        <tbody id="auditLogsTableBody">
+          <tr><td colspan="3" style="color: #94a3b8;">Loading audit events...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
   <script>
-    // 1. Owner Secret Key definition
     const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
     localStorage.setItem('ownerSecretKey', OWNER_SECRET);
 
-    // 2. Authorization Check (Runs immediately)
     const isOwner = localStorage.getItem('isOwner') === 'true';
 
     if (!isOwner) {
@@ -285,10 +150,12 @@
       document.getElementById('ownerContent').style.display = 'block';
       loadActiveUsers();
       loadRegisteredUsers();
-      setInterval(loadActiveUsers, 10000); // Auto-refresh active users every 10 seconds
+      loadAuditLogs();
+      setInterval(loadActiveUsers, 10000);
+      setInterval(loadAuditLogs, 15000);
     }
 
-    // 3. Fetch Active Users
+    // 1. Load Active Users & Force Logout Integration
     async function loadActiveUsers() {
       if (!isOwner) return;
 
@@ -300,9 +167,8 @@
 
         if (response.ok && data.success) {
           const tableBody = document.getElementById('activeUsersTableBody');
-
           if (data.users.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">No active users right now.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="color: #94a3b8;">No active users right now.</td></tr>';
             return;
           }
 
@@ -318,6 +184,9 @@
                 <td><span class="badge-role">${user.role}</span></td>
                 <td><code>${user.current_page || '/'}</code></td>
                 <td style="color: #64748b;">${timeAgo}s ago</td>
+                <td>
+                  <button class="kick-btn" onclick="kickUser('${user.username}')">Kick</button>
+                </td>
               </tr>
             `;
           }).join('');
@@ -327,7 +196,59 @@
       }
     }
 
-    // 4. Fetch Registered Users from Database
+    // Remote Force Logout handler
+    async function kickUser(username) {
+      if (!confirm(`Force-logout session for "${username}"?`)) return;
+
+      const response = await fetch('/api/kick-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-owner-auth': OWNER_SECRET
+        },
+        body: JSON.stringify({ username })
+      });
+
+      if (response.ok) {
+        loadActiveUsers();
+        loadAuditLogs();
+      } else {
+        alert('Failed to revoke session.');
+      }
+    }
+
+    // 2. Load Audit Logs
+    async function loadAuditLogs() {
+      if (!isOwner) return;
+
+      try {
+        const response = await fetch('/api/audit-logs', {
+          headers: { 'x-owner-auth': OWNER_SECRET }
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const tableBody = document.getElementById('auditLogsTableBody');
+
+          if (data.logs.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="3" style="color: #94a3b8;">No recorded security events.</td></tr>';
+            return;
+          }
+
+          tableBody.innerHTML = data.logs.map(log => `
+            <tr>
+              <td style="font-weight: 600;">${log.username || 'System'}</td>
+              <td><code>${log.action}</code></td>
+              <td style="color: #64748b;">${new Date(log.timestamp).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load audit logs:', err);
+      }
+    }
+
+    // 3. User Management Logic
     async function loadRegisteredUsers() {
       if (!isOwner) return;
 
@@ -376,20 +297,15 @@
       }
     }
 
-    // 5. Save Real Name Tag
     async function updateRealName(username, realName) {
       await fetch('/api/admin-users', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-owner-auth': OWNER_SECRET
-        },
+        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
         body: JSON.stringify({ username, realName })
       });
       loadActiveUsers();
     }
 
-    // 6. Create User Handler
     document.getElementById('createUserForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('newUsername').value;
@@ -398,10 +314,7 @@
 
       const response = await fetch('/api/admin-users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-owner-auth': OWNER_SECRET
-        },
+        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
         body: JSON.stringify({ username, password, role })
       });
 
@@ -415,46 +328,31 @@
       }
     });
 
-    // 7. Update User Role Handler
     async function updateUserRole(username, newRole) {
-      const response = await fetch('/api/admin-users', {
+      await fetch('/api/admin-users', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-owner-auth': OWNER_SECRET
-        },
+        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
         body: JSON.stringify({ username, newRole })
       });
-
-      if (response.ok) {
-        loadRegisteredUsers();
-      } else {
-        alert('Failed to update user role.');
-      }
+      loadRegisteredUsers();
     }
 
-    // 8. Delete User Handler
     async function deleteUser(username) {
       if (!confirm(`Are you sure you want to delete account "${username}"?`)) return;
 
       const response = await fetch('/api/admin-users', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-owner-auth': OWNER_SECRET
-        },
+        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
         body: JSON.stringify({ username })
       });
 
       if (response.ok) {
         loadRegisteredUsers();
         loadActiveUsers();
-      } else {
-        alert('Failed to delete user.');
       }
     }
 
-    // 9. Heartbeat Script to Record Owner Presence
+    // 4. Heartbeat & Revocation Handler
     function sendHeartbeat() {
       const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
       const username = localStorage.getItem('loggedUser');
@@ -464,53 +362,22 @@
         fetch('/api/heartbeat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            username: username, 
-            role: role,
-            page: window.location.pathname
-          })
-        }).catch(err => console.error('Heartbeat failed', err));
+          body: JSON.stringify({ username, role, page: window.location.pathname })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.revoked) {
+            localStorage.clear();
+            alert('Your session was revoked by the owner.');
+            window.location.href = 'index.html';
+          }
+        })
+        .catch(err => console.error('Heartbeat failed', err));
       }
     }
 
     sendHeartbeat();
-    setInterval(sendHeartbeat, 30000);
+    setInterval(sendHeartbeat, 15000);
   </script>
-  <!-- Put this right before </body> in index.html -->
-  <script>
-    function sendGlobalHeartbeat() {
-      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-      const username = localStorage.getItem('loggedUser');
-      const role = localStorage.getItem('role');
-
-      if (isLoggedIn && username) {
-        fetch('/api/heartbeat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: username,
-            role: role,
-            page: window.location.pathname
-          })
-        })
-        .then(res => res.json())
-        .then(data => {
-          // If the owner clicked "Kick", kick them out immediately
-          if (data.revoked) {
-            localStorage.clear();
-            alert('Your session has been terminated by an administrator.');
-            window.location.href = 'index.html';
-          }
-        })
-        .catch(err => console.error('Heartbeat check failed:', err));
-      }
-    }
-
-    // Run immediately on page load, then every 15 seconds
-    sendGlobalHeartbeat();
-    setInterval(sendGlobalHeartbeat, 15000);
-  </script>
-</body>
-</html>
 </body>
 </html>
