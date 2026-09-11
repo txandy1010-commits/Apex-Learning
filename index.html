@@ -9,6 +9,8 @@
       --primary: #0f172a;
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
+      --owner-accent: #0284c7;
+      --owner-hover: #0369a1;
       --bg: #f8fafc;
       --surface: #ffffff;
       --text: #334155;
@@ -62,7 +64,7 @@
     .nav-right {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.75rem;
     }
 
     .nav-links {
@@ -70,6 +72,7 @@
       gap: 1.5rem;
       list-style: none;
       align-items: center;
+      margin-right: 0.5rem;
     }
 
     .nav-links a {
@@ -101,6 +104,24 @@
       background: var(--accent-hover);
     }
 
+    .owner-btn {
+      background: var(--owner-accent);
+      color: white;
+      border: none;
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: none;
+      transition: background 0.2s;
+    }
+
+    .owner-btn:hover {
+      background: var(--owner-hover);
+    }
+
     .logout-btn {
       background: #dc2626;
       color: white;
@@ -112,6 +133,10 @@
       font-weight: 600;
       display: none;
       transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #b91c1c;
     }
 
     .hero {
@@ -254,6 +279,7 @@
           <li><a href="https://www.coursera.org" target="_blank">Coursera</a></li>
         </ul>
         <a href="login.html" class="login-btn" id="navLoginBtn">Login</a>
+        <a href="ownerpanel.html" class="owner-btn" id="navOwnerBtn">Owner Panel</a>
         <button class="logout-btn" id="navLogoutBtn" onclick="handleLogout()">Logout</button>
       </div>
     </div>
@@ -341,13 +367,27 @@
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const loginBtn = document.getElementById('navLoginBtn');
+      const ownerBtn = document.getElementById('navOwnerBtn');
       const logoutBtn = document.getElementById('navLogoutBtn');
       
-      if (localStorage.getItem('isLoggedIn') === 'true') {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const isOwner = localStorage.getItem('isOwner') === 'true';
+
+      if (isLoggedIn) {
         loginBtn.textContent = "Dashboard";
         loginBtn.href = "terminal.html";
         logoutBtn.style.display = "inline-block";
+
+        // Show Owner Panel button strictly if account is an owner
+        if (isOwner) {
+          ownerBtn.style.display = "inline-block";
+        } else {
+          ownerBtn.style.display = "none";
+        }
       } else {
+        loginBtn.textContent = "Login";
+        loginBtn.href = "login.html";
+        ownerBtn.style.display = "none";
         logoutBtn.style.display = "none";
       }
     });
@@ -355,31 +395,33 @@
     function handleLogout() {
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('isAdmin');
+      localStorage.removeItem('isOwner');
+      localStorage.removeItem('role');
       localStorage.removeItem('loggedUser');
       window.location.reload();
     }
   </script>
   <script>
-  function sendHeartbeat() {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const username = localStorage.getItem('loggedUser');
-    const role = localStorage.getItem('role');
+    function sendHeartbeat() {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const username = localStorage.getItem('loggedUser');
+      const role = localStorage.getItem('role');
 
-    if (isLoggedIn && username) {
-      fetch('/api/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: username, 
-          role: role,
-          page: window.location.pathname // Automatically grabs the current page path
-        })
-      }).catch(err => console.error('Heartbeat failed', err));
+      if (isLoggedIn && username) {
+        fetch('/api/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            username: username, 
+            role: role,
+            page: window.location.pathname
+          })
+        }).catch(err => console.error('Heartbeat failed', err));
+      }
     }
-  }
 
-  sendHeartbeat();
-  setInterval(sendHeartbeat, 30000);
-</script>
+    sendHeartbeat();
+    setInterval(sendHeartbeat, 30000);
+  </script>
 </body>
 </html>
