@@ -233,5 +233,26 @@
     // Initial Load
     loadRegisteredUsers();
   </script>
+  <script>
+  async function loadBanner() {
+    try {
+      const res = await fetch('/api/announcement');
+      const data = await res.json();
+      const banner = document.getElementById('siteAnnouncementBanner');
+      
+      if (data.success && data.announcement) {
+        banner.innerText = data.announcement;
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('Banner error:', err);
+    }
+  }
+
+  loadBanner();
+  setInterval(loadBanner, 30000);
+</script>
 </body>
 </html>
