@@ -178,6 +178,15 @@
       flex: 1;
       min-width: 150px;
     }
+
+    .real-name-input {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      width: 100%;
+      max-width: 180px;
+    }
   </style>
 </head>
 <body>
@@ -247,6 +256,7 @@
         <thead>
           <tr>
             <th>Username</th>
+            <th>Real Name Tag</th>
             <th>Role</th>
             <th>Created At</th>
             <th>Actions</th>
@@ -254,7 +264,7 @@
         </thead>
         <tbody id="registeredUsersTableBody">
           <tr>
-            <td colspan="4" style="color: #94a3b8;">Loading user database...</td>
+            <td colspan="5" style="color: #94a3b8;">Loading user database...</td>
           </tr>
         </tbody>
       </table>
@@ -262,7 +272,7 @@
   </div>
 
   <script>
-    // 1. Owner Secret Key definition (stored for API headers)
+    // 1. Owner Secret Key definition
     const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
     localStorage.setItem('ownerSecretKey', OWNER_SECRET);
 
@@ -278,7 +288,7 @@
       setInterval(loadActiveUsers, 10000); // Auto-refresh active users every 10 seconds
     }
 
-    // 3. Fetch Active Users from Vercel Serverless API
+    // 3. Fetch Active Users
     async function loadActiveUsers() {
       if (!isOwner) return;
 
@@ -298,9 +308,13 @@
 
           tableBody.innerHTML = data.users.map(user => {
             const timeAgo = Math.round((new Date() - new Date(user.last_seen)) / 1000);
+            const displayName = user.real_name 
+              ? `${user.username} <span style="color: #64748b; font-weight: normal;">(${user.real_name})</span>` 
+              : user.username;
+
             return `
               <tr>
-                <td style="font-weight: 600;">${user.username}</td>
+                <td style="font-weight: 600;">${displayName}</td>
                 <td><span class="badge-role">${user.role}</span></td>
                 <td><code>${user.current_page || '/'}</code></td>
                 <td style="color: #64748b;">${timeAgo}s ago</td>
@@ -327,13 +341,22 @@
           const tableBody = document.getElementById('registeredUsersTableBody');
 
           if (data.users.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">No registered users found.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="color: #94a3b8;">No registered users found.</td></tr>';
             return;
           }
 
           tableBody.innerHTML = data.users.map(user => `
             <tr>
               <td style="font-weight: 600;">${user.username}</td>
+              <td>
+                <input 
+                  type="text" 
+                  class="real-name-input"
+                  value="${user.real_name || ''}" 
+                  placeholder="Type real name..." 
+                  onchange="updateRealName('${user.username}', this.value)"
+                />
+              </td>
               <td>
                 <select onchange="updateUserRole('${user.username}', this.value)" style="padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">
                   <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
@@ -353,7 +376,20 @@
       }
     }
 
-    // 5. Create User Handler
+    // 5. Save Real Name Tag
+    async function updateRealName(username, realName) {
+      await fetch('/api/admin-users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-owner-auth': OWNER_SECRET
+        },
+        body: JSON.stringify({ username, realName })
+      });
+      loadActiveUsers();
+    }
+
+    // 6. Create User Handler
     document.getElementById('createUserForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('newUsername').value;
@@ -379,7 +415,7 @@
       }
     });
 
-    // 6. Update User Role Handler
+    // 7. Update User Role Handler
     async function updateUserRole(username, newRole) {
       const response = await fetch('/api/admin-users', {
         method: 'PUT',
@@ -397,7 +433,7 @@
       }
     }
 
-    // 7. Delete User Handler
+    // 8. Delete User Handler
     async function deleteUser(username) {
       if (!confirm(`Are you sure you want to delete account "${username}"?`)) return;
 
@@ -418,7 +454,7 @@
       }
     }
 
-    // 8. Heartbeat Script to Record Owner Presence
+    // 9. Heartbeat Script to Record Owner Presence
     function sendHeartbeat() {
       const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
       const username = localStorage.getItem('loggedUser');
@@ -438,7 +474,7 @@
     }
 
     sendHeartbeat();
-    setInterval(sendHeartbeat, 30000); // Ping every 30 seconds
+    setInterval(sendHeartbeat, 30000);
   </script>
 </body>
 </html>
