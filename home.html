@@ -18,5 +18,27 @@
     <h1>This page has moved</h1>
     <p>We are redirecting you to the main page. If you are not redirected automatically within a few seconds, please follow this link: <a href="index.html">Go to Main Page</a>.</p>
   </main>
+  <script>
+  function sendHeartbeat() {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const username = localStorage.getItem('loggedUser');
+    const role = localStorage.getItem('role');
+
+    if (isLoggedIn && username) {
+      fetch('/api/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          username: username, 
+          role: role,
+          page: window.location.pathname // Automatically grabs the current page path
+        })
+      }).catch(err => console.error('Heartbeat failed', err));
+    }
+  }
+
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 30000);
+</script>
 </body>
 </html>
