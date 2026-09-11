@@ -957,6 +957,42 @@ function applyTheme(theme){
   sendHeartbeat();
   setInterval(sendHeartbeat, 30000);
 </script>
+  <!-- Put this right before </body> in index.html -->
+  <script>
+    function sendGlobalHeartbeat() {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const username = localStorage.getItem('loggedUser');
+      const role = localStorage.getItem('role');
+
+      if (isLoggedIn && username) {
+        fetch('/api/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username,
+            role: role,
+            page: window.location.pathname
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          // If the owner clicked "Kick", kick them out immediately
+          if (data.revoked) {
+            localStorage.clear();
+            alert('Your session has been terminated by an administrator.');
+            window.location.href = 'index.html';
+          }
+        })
+        .catch(err => console.error('Heartbeat check failed:', err));
+      }
+    }
+
+    // Run immediately on page load, then every 15 seconds
+    sendGlobalHeartbeat();
+    setInterval(sendGlobalHeartbeat, 15000);
+  </script>
+</body>
+</html>
 </body>
 </html>
     
