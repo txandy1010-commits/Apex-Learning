@@ -369,15 +369,16 @@
       fetch('/api/heartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, role })
+        body: JSON.stringify({ 
+          username: username, 
+          role: role,
+          page: window.location.pathname // Automatically grabs the current page path
+        })
       }).catch(err => console.error('Heartbeat failed', err));
     }
   }
 
-  // Send immediately on page load
   sendHeartbeat();
-
-  // Repeat every 30 seconds
   setInterval(sendHeartbeat, 30000);
 </script>
 </body>
