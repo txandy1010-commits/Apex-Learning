@@ -359,5 +359,26 @@
       window.location.reload();
     }
   </script>
+  <script>
+  function sendHeartbeat() {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const username = localStorage.getItem('loggedUser');
+    const role = localStorage.getItem('role');
+
+    if (isLoggedIn && username) {
+      fetch('/api/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, role })
+      }).catch(err => console.error('Heartbeat failed', err));
+    }
+  }
+
+  // Send immediately on page load
+  sendHeartbeat();
+
+  // Repeat every 30 seconds
+  setInterval(sendHeartbeat, 30000);
+</script>
 </body>
 </html>
