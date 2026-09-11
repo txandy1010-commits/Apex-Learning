@@ -12,10 +12,10 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL);
 
-    // GET: Retrieve all registered users
+    // GET: Retrieve all registered users along with real_name
     if (req.method === 'GET') {
       const users = await sql`
-        SELECT username, role, created_at 
+        SELECT username, real_name, role, created_at 
         FROM users 
         ORDER BY created_at DESC;
       `;
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
     // POST: Create a new user account
     if (req.method === 'POST') {
-      const { username, password, role } = req.body;
+      const { username, password, role, realName } = req.body;
 
       if (!username || !password) {
         return res.status(400).json({ message: 'Username and password are required.' });
@@ -42,36 +42,40 @@ export default async function handler(req, res) {
       const userRole = role || 'user';
 
       await sql`
-        INSERT INTO users (username, password_hash, role)
-        VALUES (${cleanUsername}, ${hashedPassword}, ${userRole});
+        INSERT INTO users (username, password_hash, role, real_name)
+        VALUES (${cleanUsername}, ${hashedPassword}, ${userRole}, ${realName || null});
       `;
 
       return res.status(201).json({ success: true, message: 'User created successfully.' });
     }
 
-    // PUT: Update user role
+    // PUT: Update user role and real name tag
     if (req.method === 'PUT') {
-      const { username, newRole } = req.body;
+      const { username, newRole, realName } = req.body;
 
-      if (!username || !newRole) {
-        return res.status(400).json({ message: 'Username and newRole are required.' });
+      if (!username) {
+        return res.status(400).json({ message: 'Username is required.' });
       }
 
       const cleanUsername = username.trim().toLowerCase();
 
       await sql`
         UPDATE users 
-        SET role = ${newRole} 
+        SET 
+          role = COALESCE(${newRole}, role),
+          real_name = COALESCE(${realName}, real_name)
         WHERE LOWER(username) = ${cleanUsername};
       `;
 
-      await sql`
-        UPDATE active_sessions 
-        SET role = ${newRole} 
-        WHERE LOWER(username) = ${cleanUsername};
-      `;
+      if (newRole) {
+        await sql`
+          UPDATE active_sessions 
+          SET role = ${newRole} 
+          WHERE LOWER(username) = ${cleanUsername};
+        `;
+      }
 
-      return res.status(200).json({ success: true, message: 'Role updated successfully.' });
+      return res.status(200).json({ success: true, message: 'User updated successfully.' });
     }
 
     // DELETE: Delete user account
