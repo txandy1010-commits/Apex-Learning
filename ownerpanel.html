@@ -187,11 +187,15 @@
       }
     }
 
+    // --- KICK USER FIX ---
     async function kickUser(username) {
       if (!confirm(`Are you sure you want to kick ${username}?`)) return;
+
       try {
-        const res = await fetch('/api/active-user', {
-          method: 'DELETE',
+        // Updated endpoint target to match your backend function endpoint:
+        // Adjust endpoint URL if your file is named /api/active-user instead of /api/kick-user
+        const res = await fetch('/api/kick-user', {
+          method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'x-owner-auth': OWNER_SECRET 
@@ -199,13 +203,17 @@
           body: JSON.stringify({ username })
         });
 
+        const data = await res.json();
+
         if (res.ok) {
-          loadActiveUsers();
+          alert(`Successfully revoked session for ${username}`);
+          loadActiveUsers(); // Immediate UI update
         } else {
-          alert('Failed to kick user.');
+          alert(`Failed to kick user: ${data.message || 'Server returned an error'}`);
         }
       } catch (err) {
         console.error('Error kicking user:', err);
+        alert('Network error when attempting to kick user.');
       }
     }
 
