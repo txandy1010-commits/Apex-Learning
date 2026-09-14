@@ -1,24 +1,30 @@
 import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  // Validate Owner Authorization Header
+  const authHeader = req.headers['x-owner-auth'];
+  if (!authHeader || authHeader !== process.env.OWNER_SECRET_KEY) {
+    return res.status(403).json({ success: false, message: 'Forbidden' });
   }
 
   try {
     const sql = neon(process.env.DATABASE_URL);
 
-    // Fetch users active within the last 2 minutes
-    const activeUsers = await sql`
-      SELECT username, role, current_page, last_seen 
+    // Filter using epoch differences (900 seconds = 15 minutes)
+    const sessions = await sql`
+      SELECT 
+        username, 
+        role, 
+        current_page AS page, 
+        last_seen 
       FROM active_sessions 
-      WHERE last_seen >= NOW() - INTERVAL '2 minutes'
+      WHERE EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'UTC' - last_seen)) < 900
       ORDER BY last_seen DESC;
     `;
 
-    return res.status(200).json({ success: true, users: activeUsers });
+    return res.status(200).json({ success: true, sessions });
   } catch (error) {
-    console.error('Error fetching active users:', error);
-    return res.status(500).json({ message: 'Error retrieving active sessions.' });
+    console.error('Active users query error:', error);
+    return res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 }
