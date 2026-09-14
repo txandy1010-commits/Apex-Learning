@@ -7,11 +7,12 @@ export default async function handler(req, res) {
     return res.status(403).json({ message: 'Forbidden: Owner authorization required.' });
   }
 
-  if (req.method !== 'POST') {
+  // Allow both POST and DELETE methods
+  if (req.method !== 'POST' && req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { username } = req.body;
+  const { username } = req.body || {};
   if (!username) {
     return res.status(400).json({ message: 'Username is required.' });
   }
@@ -20,10 +21,11 @@ export default async function handler(req, res) {
     const sql = neon(process.env.DATABASE_URL);
     const cleanUsername = username.trim().toLowerCase();
 
-    // 1. Insert into revoked_sessions table
+    // 1. Insert into revoked_sessions table (prevent duplicate key errors)
     await sql`
       INSERT INTO revoked_sessions (username) 
-      VALUES (${cleanUsername});
+      VALUES (${cleanUsername})
+      ON CONFLICT DO NOTHING;
     `;
 
     // 2. Remove from active_sessions table immediately
