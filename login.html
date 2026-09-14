@@ -196,37 +196,15 @@
     }
   }
   </script>
-  <script>
-  function sendHeartbeat() {
+ <script>
+  async function sendHeartbeat() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const username = localStorage.getItem('loggedUser');
     const role = localStorage.getItem('role');
 
     if (isLoggedIn && username) {
-      fetch('/api/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: username, 
-          role: role,
-          page: window.location.pathname // Automatically grabs the current page path
-        })
-      }).catch(err => console.error('Heartbeat failed', err));
-    }
-  }
-
-  sendHeartbeat();
-  setInterval(sendHeartbeat, 30000);
-</script>
-  <!-- Put this right before </body> in index.html -->
-  <script>
-    function sendGlobalHeartbeat() {
-      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-      const username = localStorage.getItem('loggedUser');
-      const role = localStorage.getItem('role');
-
-      if (isLoggedIn && username) {
-        fetch('/api/heartbeat', {
+      try {
+        const res = await fetch('/api/heartbeat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -234,24 +212,26 @@
             role: role,
             page: window.location.pathname
           })
-        })
-        .then(res => res.json())
-        .then(data => {
-          // If the owner clicked "Kick", kick them out immediately
-          if (data.revoked) {
-            localStorage.clear();
-            alert('Your session has been terminated by an administrator.');
-            window.location.href = 'index.html';
-          }
-        })
-        .catch(err => console.error('Heartbeat check failed:', err));
+        });
+
+        const data = await res.json();
+
+        // If the server returns kicked or revoked, log out and redirect to Google
+        if (data.kicked || data.revoked) {
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.href = 'https://www.google.com';
+        }
+      } catch (err) {
+        console.error('Heartbeat check failed:', err);
       }
     }
+  }
 
-    // Run immediately on page load, then every 15 seconds
-    sendGlobalHeartbeat();
-    setInterval(sendGlobalHeartbeat, 15000);
-  </script>
+  // Run immediately on page load, then every 5 seconds for fast response
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 5000);
+</script>
 </body>
 </html>
 </body>
