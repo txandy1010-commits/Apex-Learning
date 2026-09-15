@@ -2828,6 +2828,76 @@ function renderRecentGames(){
 
 document.addEventListener("DOMContentLoaded", renderRecentGames);
 </script>
+    <!-- Load Pusher JS Client Library -->
+<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+
+<!-- Chat Widget UI Container -->
+<div id="chatWidgetContainer"></div>
+
+<script>
+  // Check if current page is index.html or root page
+  const path = window.location.pathname;
+  const isHomePage = path === '/' || path.endsWith('/index.html');
+
+  if (!isHomePage) {
+    // Inject the Chat Widget HTML only if NOT on index.html
+    document.getElementById('chatWidgetContainer').innerHTML = `
+      <div id="chatWidget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; width: 320px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: #1e293b;">Live Chat</h3>
+        <div id="chatMessages" style="height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.9rem; background: #f8fafc;"></div>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;">
+          <button onclick="sendChatMessage()" style="background: #2563eb; color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600;">Send</button>
+        </div>
+      </div>
+    `;
+
+    // Initialize Pusher Client
+    const pusher = new Pusher('c33c47677ef3d8d8a413', {
+      cluster: 'us2'
+    });
+
+    // Subscribe to chat channel
+    const channel = pusher.subscribe('chat-room');
+
+    // Listen for incoming messages
+    channel.bind('new-message', function(data) {
+      appendMessage(data.username, data.message);
+    });
+
+    // Send chat message function
+    window.sendChatMessage = async function() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      const username = localStorage.getItem('loggedUser') || 'Guest';
+
+      if (!message) return;
+
+      try {
+        await fetch('/api/send-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, message })
+        });
+        input.value = '';
+      } catch (err) {
+        console.error('Failed to send message:', err);
+      }
+    };
+
+    // Helper to display incoming messages
+    function appendMessage(user, msg) {
+      const container = document.getElementById('chatMessages');
+      if (container) {
+        const msgElement = document.createElement('div');
+        msgElement.style.marginBottom = '6px';
+        msgElement.innerHTML = `<strong>${user}:</strong> ${msg}`;
+        container.appendChild(msgElement);
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }
+</script>
 
 </body>
 </html>
