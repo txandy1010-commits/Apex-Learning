@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   const { type, sender, recipient, message } = req.body;
 
   try {
-    // 1. Handle Live Chat Broadcast
+    // Live Chat Broadcast
     if (type === 'live') {
       await pusher.trigger('chat-room', 'new-message', {
         username: sender,
@@ -26,13 +26,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // 2. Handle Private Message or Direct Chat Request via Pusher
-    if (type === 'pm' || type === 'pm-request' || type === 'pm-accept') {
+    // Direct Message directly to Recipient Channel
+    if (type === 'pm') {
       if (!recipient) return res.status(400).json({ message: 'Recipient required' });
 
-      // Target the recipient's individual user channel
       await pusher.trigger(`user-${recipient.toLowerCase()}`, 'pm-event', {
-        type,
         sender,
         recipient,
         message,
