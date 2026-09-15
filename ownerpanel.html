@@ -84,19 +84,37 @@
     <!-- 2. Targeted Alert Banner Management -->
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">System & Targeted Alert Banner</h2>
+        <h2 class="card-title">Create New Alert Banner</h2>
       </div>
       <div class="form-group">
         <input type="text" id="announcementInput" class="form-input" placeholder="Type announcement message...">
-        <input type="text" id="targetUserInput" class="form-input" placeholder="Target User (Optional)" style="max-width: 180px;">
+        <select id="targetUserDropdown" class="form-input" style="max-width: 200px;">
+          <option value="">All Users (Global)</option>
+        </select>
         <select id="targetRoleInput" class="form-input" style="max-width: 130px;">
           <option value="">All Roles</option>
           <option value="user">User</option>
           <option value="admin">Admin</option>
           <option value="owner">Owner</option>
         </select>
-        <button class="refresh-btn" onclick="saveTargetedAnnouncement()">Set Banner</button>
-        <button class="delete-btn" onclick="clearAnnouncement()">Clear Banner</button>
+        <button class="refresh-btn" onclick="saveTargetedAnnouncement()">Add Banner</button>
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 0.75rem;">Active Banners List</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Message</th>
+              <th>Target User</th>
+              <th>Target Role</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="activeBannersTableBody">
+            <tr><td colspan="4" style="color: #94a3b8;">Loading banners...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -106,7 +124,9 @@
         <h2 class="card-title">Remote Kick Tool</h2>
       </div>
       <div class="form-group">
-        <input type="text" id="manualKickUsername" class="form-input" placeholder="Enter target username to kick (active or offline)...">
+        <select id="manualKickUserDropdown" class="form-input">
+          <option value="">-- Select User to Kick --</option>
+        </select>
         <button class="kick-btn" style="padding: 0.5rem 1rem;" onclick="kickOfflineUser()">Pre-emptive Temp Kick</button>
       </div>
     </div>
@@ -128,7 +148,7 @@
           </tr>
         </thead>
         <tbody id="activeUsersTableBody">
-          <tr><td colspan="5" style="color: #94a3b8;">Loading active users...</td></tr>
+          <tr><td colspan="5" style="color: #94a3b8;">Loading active sessions...</td></tr>
         </tbody>
       </table>
     </div>
@@ -169,6 +189,25 @@
 
   <script>
     const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
+    let registeredUsersList = [];
+
+    // Populate dropdowns with current registered users
+    function updateDropdowns(users) {
+      registeredUsersList = users;
+      const bannerDropdown = document.getElementById('targetUserDropdown');
+      const kickDropdown = document.getElementById('manualKickUserDropdown');
+
+      let bannerHtml = '<option value="">All Users (Global)</option>';
+      let kickHtml = '<option value="">-- Select User to Kick --</option>';
+
+      users.forEach(user => {
+        bannerHtml += `<option value="${user.username}">${user.username}</option>`;
+        kickHtml += `<option value="${user.username}">${user.username}</option>`;
+      });
+
+      bannerDropdown.innerHTML = bannerHtml;
+      kickDropdown.innerHTML = kickHtml;
+    }
 
     // --- Active Sessions ---
     async function loadActiveUsers() {
@@ -232,8 +271,8 @@
     }
 
     async function kickOfflineUser() {
-      const username = document.getElementById('manualKickUsername').value.trim();
-      if (!username) return alert('Please enter a target username.');
+      const username = document.getElementById('manualKickUserDropdown').value;
+      if (!username) return alert('Please select a target user from the dropdown.');
 
       if (!confirm(`Set pre-emptive kick for ${username}?`)) return;
 
@@ -250,7 +289,7 @@
         const data = await res.json();
         if (res.ok) {
           alert(`Pre-emptive kick queued for ${username}. They will be redirected upon next heartbeat/login.`);
-          document.getElementById('manualKickUsername').value = '';
+          document.getElementById('manualKickUserDropdown').value = '';
           loadActiveUsers();
         } else {
           alert(`Error: ${data.message}`);
@@ -273,6 +312,8 @@
           document.getElementById('metricActiveUsers').innerText = data.metrics.activeUsers;
           document.getElementById('metricLogsToday').innerText = data.metrics.logsToday;
           document.getElementById('metricDbStatus').innerText = data.metrics.dbStatus;
+
+          updateDropdowns(data.users);
 
           const tableBody = document.getElementById('registeredUsersTableBody');
           tableBody.innerHTML = data.users.map(user => `
@@ -370,9 +411,57 @@
     }
 
     // --- Targeted Banner Management ---
+    async function fetchBannersList() {
+      const tableBody = document.getElementById('activeBannersTableBody');
+      try {
+        const res = await fetch('/api/announcement?mode=all', {
+          headers: { 'x-owner-auth': OWNER_SECRET }
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          if (!data.banners || data.banners.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">No active banners set.</td></tr>';
+            return;
+          }
+
+          tableBody.innerHTML = data.banners.map(b => {
+            const userOptions = '<option value="">All Users</option>' + registeredUsersList.map(u => 
+              `<option value="${u.username}" ${b.target_user === u.username ? 'selected' : ''}>${u.username}</option>`
+            ).join('');
+
+            return `
+              <tr>
+                <td>
+                  <input type="text" class="form-input" id="banner-msg-${b.id}" value="${b.message}">
+                </td>
+                <td>
+                  <select class="form-input" id="banner-user-${b.id}">${userOptions}</select>
+                </td>
+                <td>
+                  <select class="form-input" id="banner-role-${b.id}">
+                    <option value="" ${!b.target_role ? 'selected' : ''}>All Roles</option>
+                    <option value="user" ${b.target_role === 'user' ? 'selected' : ''}>User</option>
+                    <option value="admin" ${b.target_role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="owner" ${b.target_role === 'owner' ? 'selected' : ''}>Owner</option>
+                  </select>
+                </td>
+                <td>
+                  <button class="action-btn" onclick="updateBanner(${b.id})">Update</button>
+                  <button class="delete-btn" onclick="deleteBanner(${b.id})">Delete</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load banner list:', err);
+      }
+    }
+
     async function saveTargetedAnnouncement() {
       const message = document.getElementById('announcementInput').value;
-      const targetUser = document.getElementById('targetUserInput').value.trim();
+      const targetUser = document.getElementById('targetUserDropdown').value;
       const targetRole = document.getElementById('targetRoleInput').value;
 
       if (!message) return alert('Please enter an announcement message.');
@@ -387,23 +476,55 @@
       });
 
       if (res.ok) {
-        alert('Banner set successfully!');
+        document.getElementById('announcementInput').value = '';
+        fetchBannersList();
         loadBanner();
       } else {
-        alert('Failed to set banner.');
+        alert('Failed to create banner.');
       }
     }
 
-    async function clearAnnouncement() {
-      await fetch('/api/announcement', {
-        method: 'DELETE',
-        headers: { 'x-owner-auth': OWNER_SECRET }
+    async function updateBanner(id) {
+      const message = document.getElementById(`banner-msg-${id}`).value;
+      const targetUser = document.getElementById(`banner-user-${id}`).value;
+      const targetRole = document.getElementById(`banner-role-${id}`).value;
+
+      const res = await fetch('/api/announcement', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-owner-auth': OWNER_SECRET 
+        },
+        body: JSON.stringify({ id, message, targetUser, targetRole })
       });
-      document.getElementById('announcementInput').value = '';
-      document.getElementById('targetUserInput').value = '';
-      document.getElementById('targetRoleInput').value = '';
-      alert('System banner cleared!');
-      loadBanner();
+
+      if (res.ok) {
+        alert('Banner updated!');
+        fetchBannersList();
+        loadBanner();
+      } else {
+        alert('Failed to update banner.');
+      }
+    }
+
+    async function deleteBanner(id) {
+      if (!confirm('Are you sure you want to delete this banner?')) return;
+
+      const res = await fetch('/api/announcement', {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-owner-auth': OWNER_SECRET 
+        },
+        body: JSON.stringify({ id })
+      });
+
+      if (res.ok) {
+        fetchBannersList();
+        loadBanner();
+      } else {
+        alert('Failed to delete banner.');
+      }
     }
 
     async function loadBanner() {
@@ -412,19 +533,34 @@
         const data = await res.json();
         const banner = document.getElementById('siteAnnouncementBanner');
 
-        if (data.success && data.announcement) {
-          banner.innerText = data.announcement;
-          banner.style.display = 'block';
-        } else {
-          banner.style.display = 'none';
+        if (data.success && data.banners && data.banners.length > 0) {
+          const currentUser = localStorage.getItem('loggedUser');
+          const currentRole = localStorage.getItem('role');
+
+          // Find the first banner that applies to the current active session
+          const activeBanner = data.banners.find(b => {
+            const isGlobal = !b.target_user && !b.target_role;
+            const matchesUser = b.target_user && currentUser && b.target_user.toLowerCase() === currentUser.toLowerCase();
+            const matchesRole = b.target_role && currentRole && b.target_role.toLowerCase() === currentRole.toLowerCase();
+            return isGlobal || matchesUser || matchesRole;
+          });
+
+          if (activeBanner) {
+            banner.innerText = activeBanner.message;
+            banner.style.display = 'block';
+            return;
+          }
         }
+        banner.style.display = 'none';
       } catch (err) {
         console.error('Banner load error:', err);
       }
     }
 
     // Initializations
-    loadRegisteredUsers();
+    loadRegisteredUsers().then(() => {
+      fetchBannersList();
+    });
     loadActiveUsers();
     loadBanner();
 
