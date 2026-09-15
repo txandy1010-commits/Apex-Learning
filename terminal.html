@@ -869,52 +869,89 @@
 loadBanner();
   </script>
   <!-- Load Pusher JS Client Library -->
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
-
-<!-- Chat Widget UI Container -->
-<div id="chatWidgetContainer"></div>
-
 <!-- Load Pusher JS Library -->
 <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
 
 <div id="apexChatWrapper"></div>
 
 <style>
-  #chatBubbleBtn {
+  /* Floating Corner Bubble */
+  #chatBubbleWrapper {
     position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  }
+  #chatBubbleBtn {
     width: 56px; height: 56px; border-radius: 50%;
     background: #2563eb; color: #fff; border: none; cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; transition: transform 0.2s;
+    font-size: 1.5rem; position: relative; transition: transform 0.2s;
   }
   #chatBubbleBtn:hover { transform: scale(1.08); }
 
-  #chatWindow {
-    position: fixed; bottom: 85px; right: 20px; z-index: 9999;
-    width: 350px; height: 480px; background: #ffffff; border-radius: 12px;
-    border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    display: none; flex-direction: column; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Red Notification Dot */
+  .unread-dot {
+    position: absolute; top: 2px; right: 2px; width: 14px; height: 14px;
+    background-color: #ef4444; border: 2px solid #ffffff; border-radius: 50%; display: none;
   }
 
+  /* Chat Window Widget */
+  #chatWindow {
+    position: fixed; bottom: 85px; right: 20px; z-index: 9999;
+    width: 380px; height: 500px; background: #ffffff; border-radius: 12px;
+    border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    display: none; flex-direction: column; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Fullscreen Mode */
+  #chatWindow.fullscreen {
+    top: 10px; left: 10px; right: 10px; bottom: 10px;
+    width: auto !important; height: auto !important; border-radius: 8px;
+  }
+
+  /* Header & Tabs */
   .chat-header {
-    background: #0f172a; color: white; padding: 0.75rem 1rem;
+    background: #0f172a; color: #ffffff; padding: 0.6rem 1rem;
     display: flex; justify-content: space-between; align-items: center;
   }
+  .header-actions button {
+    background: none; border: none; color: #cbd5e1; font-weight: bold;
+    cursor: pointer; font-size: 1rem; margin-left: 8px;
+  }
+  .header-actions button:hover { color: #ffffff; }
+
   .chat-tabs { display: flex; background: #1e293b; }
   .chat-tab {
     flex: 1; padding: 0.5rem; text-align: center; color: #94a3b8;
     cursor: pointer; font-size: 0.85rem; font-weight: 600; border: none; background: none;
+    position: relative;
   }
   .chat-tab.active { color: #ffffff; background: #2563eb; }
 
-  .chat-body { flex: 1; display: flex; flex-direction: column; padding: 0.5rem; overflow: hidden; }
-  .messages-box { flex: 1; overflow-y: auto; padding: 0.75rem; font-size: 0.88rem; background: #f8fafc; border-radius: 6px; }
-  .msg-item { margin-bottom: 8px; line-height: 1.3; }
-  .msg-user { font-weight: 700; color: #1e293b; }
+  /* Layout Body */
+  .chat-body { flex: 1; display: flex; overflow: hidden; }
+  .messages-box { flex: 1; overflow-y: auto; padding: 0.75rem; font-size: 0.88rem; background: #f8fafc; color: #334155; }
+  .msg-item { margin-bottom: 8px; line-height: 1.35; color: #334155; word-break: break-word; }
+  .msg-user { font-weight: 700; color: #0f172a; margin-right: 4px; }
 
-  .chat-footer { padding-top: 0.5rem; display: flex; gap: 0.5rem; border-top: 1px solid #e2e8f0; margin-top: 0.5rem; }
-  .chat-input { flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
-  .send-btn { background: #2563eb; color: white; border: none; padding: 0.5rem 0.85rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+  /* Discord-style User List Sidebar */
+  .user-sidebar {
+    width: 120px; background: #f1f5f9; border-right: 1px solid #e2e8f0;
+    overflow-y: auto; padding: 0.5rem 0.25rem; display: flex; flex-direction: column; gap: 4px;
+  }
+  .user-item {
+    padding: 6px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+    color: #334155; cursor: pointer; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .user-item:hover { background: #e2e8f0; }
+  .user-item.active { background: #2563eb; color: #ffffff; }
+  .user-item-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; }
+
+  .chat-main-area { flex: 1; display: flex; flex-direction: column; }
+  .chat-footer { padding: 0.5rem; display: flex; gap: 0.5rem; border-top: 1px solid #e2e8f0; background: #ffffff; }
+  .chat-input { flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: #0f172a; background: #ffffff; }
+  .send-btn { background: #2563eb; color: #ffffff; border: none; padding: 0.5rem 0.85rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
 </style>
 
 <script>
@@ -924,58 +961,97 @@ loadBanner();
 
   const currentUser = localStorage.getItem('loggedUser') || 'Guest';
 
-  // Inject UI
+  // Build UI
   const wrapper = document.getElementById('apexChatWrapper');
   wrapper.innerHTML = `
-    <button id="chatBubbleBtn" onclick="toggleChat()">💬</button>
+    <div id="chatBubbleWrapper">
+      <button id="chatBubbleBtn" onclick="toggleChat()">
+        💬
+        <span id="bubbleDot" class="unread-dot"></span>
+      </button>
+    </div>
 
     <div id="chatWindow">
       <div class="chat-header">
         <span style="font-weight: 600; font-size: 0.95rem;">Apex Hub Chat</span>
-        <button onclick="toggleChat()" style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;">✕</button>
+        <div class="header-actions">
+          <button title="Toggle Fullscreen" onclick="toggleFullscreen()">⛶</button>
+          <button title="Close" onclick="toggleChat()">✕</button>
+        </div>
       </div>
 
       <div class="chat-tabs">
-        <button class="chat-tab active" id="tabLive" onclick="switchTab('live')">Live Chat</button>
-        <button class="chat-tab" id="tabPM" onclick="switchTab('pm')">Private Messages</button>
+        <button class="chat-tab active" id="tabLive" onclick="switchTab('live')">
+          Live Chat
+          <span id="liveTabDot" class="unread-dot"></span>
+        </button>
+        <button class="chat-tab" id="tabPM" onclick="switchTab('pm')">
+          Direct Messages
+          <span id="pmTabDot" class="unread-dot"></span>
+        </button>
       </div>
 
       <!-- Live Chat Panel -->
       <div id="panelLive" class="chat-body">
-        <div id="liveMessages" class="messages-box"></div>
-        <div class="chat-footer">
-          <input type="text" id="liveInput" class="chat-input" placeholder="Message live chat..." onkeypress="handleEnter(event, sendLiveMessage)">
-          <button class="send-btn" onclick="sendLiveMessage()">Send</button>
+        <div class="chat-main-area">
+          <div id="liveMessages" class="messages-box"></div>
+          <div class="chat-footer">
+            <input type="text" id="liveInput" class="chat-input" placeholder="Message live chat..." onkeypress="handleEnter(event, sendLiveMessage)">
+            <button class="send-btn" onclick="sendLiveMessage()">Send</button>
+          </div>
         </div>
       </div>
 
       <!-- Private Messages Panel -->
       <div id="panelPM" class="chat-body" style="display: none;">
-        <div style="padding-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 0.25rem;">
-          <input type="text" id="pmTargetInput" class="chat-input" placeholder="Enter target username...">
-          <button class="send-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openPMConversation()">Select</button>
+        <div class="user-sidebar" id="userSidebar">
+          <div style="font-size: 0.7rem; color: #64748b; font-weight: bold; padding: 2px 4px; text-transform: uppercase;">Users</div>
         </div>
-        <div id="pmRequestBanner"></div>
-        <div id="pmMessages" class="messages-box">Type a username above to start or continue a private conversation.</div>
-        <div class="chat-footer">
-          <input type="text" id="pmInput" class="chat-input" placeholder="Private message..." onkeypress="handleEnter(event, sendPM)">
-          <button class="send-btn" onclick="sendPM()">Send</button>
+        <div class="chat-main-area">
+          <div id="pmHeaderBar" style="padding: 6px 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 0.8rem; font-weight: 600; color: #475569;">
+            Select a user to chat
+          </div>
+          <div id="pmMessages" class="messages-box">Select a user from the sidebar to view chat history.</div>
+          <div class="chat-footer">
+            <input type="text" id="pmInput" class="chat-input" placeholder="Private message..." onkeypress="handleEnter(event, sendPM)">
+            <button class="send-btn" onclick="sendPM()">Send</button>
+          </div>
         </div>
       </div>
     </div>
   `;
 
-  // Toggle & Tabs
+  let isWindowOpen = false;
+  let currentTab = 'live';
+  let hasUnreadLive = false;
+  let unreadPMUsers = new Set();
+
+  // Window Controls
   window.toggleChat = function() {
     const win = document.getElementById('chatWindow');
-    win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+    isWindowOpen = (win.style.display === 'flex');
+    win.style.display = isWindowOpen ? 'none' : 'flex';
+    isWindowOpen = !isWindowOpen;
+
+    if (isWindowOpen) {
+      if (currentTab === 'live') clearLiveUnread();
+      if (currentTab === 'pm') updatePMUnreadUI();
+    }
+  };
+
+  window.toggleFullscreen = function() {
+    document.getElementById('chatWindow').classList.toggle('fullscreen');
   };
 
   window.switchTab = function(tab) {
+    currentTab = tab;
     document.getElementById('tabLive').classList.toggle('active', tab === 'live');
     document.getElementById('tabPM').classList.toggle('active', tab === 'pm');
     document.getElementById('panelLive').style.display = tab === 'live' ? 'flex' : 'none';
     document.getElementById('panelPM').style.display = tab === 'pm' ? 'flex' : 'none';
+
+    if (tab === 'live') clearLiveUnread();
+    if (tab === 'pm') renderUserSidebar();
   };
 
   window.handleEnter = function(e, actionFn) {
@@ -987,10 +1063,10 @@ loadBanner();
   const liveChannel = pusher.subscribe('chat-room');
   const userChannel = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
 
-  // Storage for Live Chat
+  // --- Live Chat Logic ---
   let localLiveCache = JSON.parse(localStorage.getItem('live_chat_cache') || '[]');
   const now = Date.now();
-  localLiveCache = localLiveCache.filter(m => (now - m.timestamp) < 86400000); // Keep for 1 day
+  localLiveCache = localLiveCache.filter(m => (now - m.timestamp) < 86400000); // 1-day retention
   localStorage.setItem('live_chat_cache', JSON.stringify(localLiveCache));
 
   function renderLiveMessages() {
@@ -1002,7 +1078,7 @@ loadBanner();
     recent.forEach(m => {
       const div = document.createElement('div');
       div.className = 'msg-item';
-      div.innerHTML = `<span class="msg-user">${m.user}:</span> ${m.msg}`;
+      div.innerHTML = `<span class="msg-user">${m.user}:</span><span>${m.msg}</span>`;
       box.appendChild(div);
     });
     box.scrollTop = box.scrollHeight;
@@ -1013,6 +1089,12 @@ loadBanner();
     localLiveCache.push({ user: data.username, msg: data.message, timestamp: data.timestamp });
     localStorage.setItem('live_chat_cache', JSON.stringify(localLiveCache));
     renderLiveMessages();
+    trackKnownUser(data.username);
+
+    if (!isWindowOpen || currentTab !== 'live') {
+      hasUnreadLive = true;
+      updateUnreadDots();
+    }
   });
 
   window.sendLiveMessage = async function() {
@@ -1028,49 +1110,70 @@ loadBanner();
     input.value = '';
   };
 
-  // --- 100% Pusher Private Messaging Logic ---
+  // --- Direct Messaging & Sidebar Logic ---
   let activePMTarget = '';
-  let pmStore = JSON.parse(localStorage.getItem('pm_store') || '{}'); // Local PM history storage
-  let acceptedContacts = JSON.parse(localStorage.getItem('pm_accepted_contacts') || '[]');
+  let pmStore = JSON.parse(localStorage.getItem('pm_store') || '{}');
+  let knownUsers = new Set(JSON.parse(localStorage.getItem('chat_known_users') || '[]'));
 
-  function savePMStore() {
-    localStorage.setItem('pm_store', JSON.stringify(pmStore));
+  function trackKnownUser(user) {
+    if (!user || user.toLowerCase() === currentUser.toLowerCase()) return;
+    if (!knownUsers.has(user)) {
+      knownUsers.add(user);
+      localStorage.setItem('chat_known_users', JSON.stringify([...knownUsers]));
+      renderUserSidebar();
+    }
   }
 
-  function saveAcceptedContacts() {
-    localStorage.setItem('pm_accepted_contacts', JSON.stringify(acceptedContacts));
+  function renderUserSidebar() {
+    const sidebar = document.getElementById('userSidebar');
+    sidebar.innerHTML = '<div style="font-size: 0.7rem; color: #64748b; font-weight: bold; padding: 2px 4px; text-transform: uppercase;">Users</div>';
+
+    knownUsers.forEach(user => {
+      const div = document.createElement('div');
+      div.className = `user-item ${activePMTarget.toLowerCase() === user.toLowerCase() ? 'active' : ''}`;
+      
+      const hasUnread = unreadPMUsers.has(user.toLowerCase());
+      div.innerHTML = `
+        <span>${user}</span>
+        ${hasUnread ? '<span class="user-item-dot"></span>' : ''}
+      `;
+
+      div.onclick = function() {
+        activePMTarget = user;
+        unreadPMUsers.delete(user.toLowerCase());
+        updatePMUnreadUI();
+        renderUserSidebar();
+        renderPMThread();
+      };
+
+      sidebar.appendChild(div);
+    });
   }
-
-  window.openPMConversation = function() {
-    const target = document.getElementById('pmTargetInput').value.trim();
-    if (!target) return alert('Enter a target username.');
-    if (target.toLowerCase() === currentUser.toLowerCase()) return alert('You cannot PM yourself.');
-
-    activePMTarget = target;
-    renderPMThread();
-  };
 
   function renderPMThread() {
     const box = document.getElementById('pmMessages');
-    const banner = document.getElementById('pmRequestBanner');
+    const header = document.getElementById('pmHeaderBar');
     box.innerHTML = '';
-    banner.innerHTML = '';
 
-    if (!activePMTarget) return;
+    if (!activePMTarget) {
+      header.innerText = 'Select a user to chat';
+      box.innerHTML = 'Select a user from the sidebar to view chat history.';
+      return;
+    }
 
+    header.innerText = `Chatting with @${activePMTarget}`;
     const threadKey = [currentUser.toLowerCase(), activePMTarget.toLowerCase()].sort().join('_');
     const thread = pmStore[threadKey] || [];
-    const isAccepted = acceptedContacts.includes(activePMTarget.toLowerCase());
 
-    if (!isAccepted && thread.length === 0) {
-      box.innerHTML = `<div style="color: #64748b;">No chat history with ${activePMTarget}. Send a message to send a chat request!</div>`;
+    if (thread.length === 0) {
+      box.innerHTML = `<div style="color: #64748b;">No messages with @${activePMTarget} yet. Send a message below!</div>`;
       return;
     }
 
     thread.forEach(m => {
       const div = document.createElement('div');
       div.className = 'msg-item';
-      div.innerHTML = `<span class="msg-user">${m.sender}:</span> ${m.message}`;
+      div.innerHTML = `<span class="msg-user">${m.sender}:</span><span>${m.message}</span>`;
       box.appendChild(div);
     });
     box.scrollTop = box.scrollHeight;
@@ -1079,52 +1182,35 @@ loadBanner();
   window.sendPM = async function() {
     const input = document.getElementById('pmInput');
     const message = input.value.trim();
-    if (!message || !activePMTarget) return alert('Enter a target username first!');
+    if (!message || !activePMTarget) return alert('Select a user from the sidebar first!');
 
-    const isAccepted = acceptedContacts.includes(activePMTarget.toLowerCase());
-    const eventType = isAccepted ? 'pm' : 'pm-request';
-
-    // Save locally
     const threadKey = [currentUser.toLowerCase(), activePMTarget.toLowerCase()].sort().join('_');
     if (!pmStore[threadKey]) pmStore[threadKey] = [];
     pmStore[threadKey].push({ sender: currentUser, message, timestamp: Date.now() });
-    savePMStore();
+    localStorage.setItem('pm_store', JSON.stringify(pmStore));
 
-    // Trigger via Pusher to target user's personal channel
     await fetch('/api/send-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: eventType, sender: currentUser, recipient: activePMTarget, message })
+      body: JSON.stringify({ type: 'pm', sender: currentUser, recipient: activePMTarget, message })
     });
 
     input.value = '';
     renderPMThread();
   };
 
-  // Listen on individual channel for incoming requests, acceptances, and PMs
   userChannel.bind('pm-event', function(data) {
     const senderLower = data.sender.toLowerCase();
-    const threadKey = [currentUser.toLowerCase(), senderLower].sort().join('_');
+    trackKnownUser(data.sender);
 
+    const threadKey = [currentUser.toLowerCase(), senderLower].sort().join('_');
     if (!pmStore[threadKey]) pmStore[threadKey] = [];
     pmStore[threadKey].push({ sender: data.sender, message: data.message, timestamp: data.timestamp });
-    savePMStore();
+    localStorage.setItem('pm_store', JSON.stringify(pmStore));
 
-    if (data.type === 'pm-request') {
-      const banner = document.getElementById('pmRequestBanner');
-      banner.innerHTML = `
-        <div style="background:#fef3c7; padding:8px; border-radius:6px; margin: 4px 0; font-size: 0.8rem;">
-          <strong>${data.sender}</strong> sent you a PM request.
-          <button onclick="acceptRequest('${data.sender}')" style="background:#10b981; color:white; border:none; padding:3px 6px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:6px;">Accept</button>
-        </div>
-      `;
-    }
-
-    if (data.type === 'pm-accept') {
-      if (!acceptedContacts.includes(senderLower)) {
-        acceptedContacts.push(senderLower);
-        saveAcceptedContacts();
-      }
+    if (!isWindowOpen || currentTab !== 'pm' || activePMTarget.toLowerCase() !== senderLower) {
+      unreadPMUsers.add(senderLower);
+      updatePMUnreadUI();
     }
 
     if (activePMTarget.toLowerCase() === senderLower) {
@@ -1132,23 +1218,33 @@ loadBanner();
     }
   });
 
-  window.acceptRequest = async function(sender) {
-    const senderLower = sender.toLowerCase();
-    if (!acceptedContacts.includes(senderLower)) {
-      acceptedContacts.push(senderLower);
-      saveAcceptedContacts();
+  // --- Notification Dot Management ---
+  function clearLiveUnread() {
+    hasUnreadLive = false;
+    updateUnreadDots();
+  }
+
+  function updatePMUnreadUI() {
+    renderUserSidebar();
+    updateUnreadDots();
+  }
+
+  function updateUnreadDots() {
+    const bubbleDot = document.getElementById('bubbleDot');
+    const liveTabDot = document.getElementById('liveTabDot');
+    const pmTabDot = document.getElementById('pmTabDot');
+
+    liveTabDot.style.display = hasUnreadLive ? 'block' : 'none';
+    pmTabDot.style.display = unreadPMUsers.size > 0 ? 'block' : 'none';
+
+    if (hasUnreadLive || unreadPMUsers.size > 0) {
+      bubbleDot.style.display = 'block';
+    } else {
+      bubbleDot.style.display = 'none';
     }
+  }
 
-    await fetch('/api/send-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'pm-accept', sender: currentUser, recipient: sender, message: 'Accepted request' })
-    });
-
-    document.getElementById('pmRequestBanner').innerHTML = '';
-    renderPMThread();
-  };
-
+  renderUserSidebar();
 })();
 </script>
 </body>
