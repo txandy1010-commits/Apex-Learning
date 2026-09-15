@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "pusher": "^5.2.0"
   }
 }
