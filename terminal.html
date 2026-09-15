@@ -874,69 +874,282 @@ loadBanner();
 <!-- Chat Widget UI Container -->
 <div id="chatWidgetContainer"></div>
 
-<script>
-  // Check if current page is index.html or root page
-  const path = window.location.pathname;
-  const isHomePage = path === '/' || path.endsWith('/index.html');
+<!-- Load Pusher JS Library -->
+<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
 
-  if (!isHomePage) {
-    // Inject the Chat Widget HTML only if NOT on index.html
-    document.getElementById('chatWidgetContainer').innerHTML = `
-      <div id="chatWidget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; width: 320px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-        <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: #1e293b;">Live Chat</h3>
-        <div id="chatMessages" style="height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.9rem; background: #f8fafc;"></div>
-        <div style="display: flex; gap: 0.5rem;">
-          <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;">
-          <button onclick="sendChatMessage()" style="background: #2563eb; color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600;">Send</button>
+<div id="apexChatWrapper"></div>
+
+<style>
+  #chatBubbleBtn {
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #2563eb; color: #fff; border: none; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; transition: transform 0.2s;
+  }
+  #chatBubbleBtn:hover { transform: scale(1.08); }
+
+  #chatWindow {
+    position: fixed; bottom: 85px; right: 20px; z-index: 9999;
+    width: 350px; height: 480px; background: #ffffff; border-radius: 12px;
+    border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    display: none; flex-direction: column; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .chat-header {
+    background: #0f172a; color: white; padding: 0.75rem 1rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .chat-tabs { display: flex; background: #1e293b; }
+  .chat-tab {
+    flex: 1; padding: 0.5rem; text-align: center; color: #94a3b8;
+    cursor: pointer; font-size: 0.85rem; font-weight: 600; border: none; background: none;
+  }
+  .chat-tab.active { color: #ffffff; background: #2563eb; }
+
+  .chat-body { flex: 1; display: flex; flex-direction: column; padding: 0.5rem; overflow: hidden; }
+  .messages-box { flex: 1; overflow-y: auto; padding: 0.75rem; font-size: 0.88rem; background: #f8fafc; border-radius: 6px; }
+  .msg-item { margin-bottom: 8px; line-height: 1.3; }
+  .msg-user { font-weight: 700; color: #1e293b; }
+
+  .chat-footer { padding-top: 0.5rem; display: flex; gap: 0.5rem; border-top: 1px solid #e2e8f0; margin-top: 0.5rem; }
+  .chat-input { flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
+  .send-btn { background: #2563eb; color: white; border: none; padding: 0.5rem 0.85rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+</style>
+
+<script>
+(function() {
+  const path = window.location.pathname;
+  if (path === '/' || path.endsWith('/index.html')) return;
+
+  const currentUser = localStorage.getItem('loggedUser') || 'Guest';
+
+  // Inject UI
+  const wrapper = document.getElementById('apexChatWrapper');
+  wrapper.innerHTML = `
+    <button id="chatBubbleBtn" onclick="toggleChat()">💬</button>
+
+    <div id="chatWindow">
+      <div class="chat-header">
+        <span style="font-weight: 600; font-size: 0.95rem;">Apex Hub Chat</span>
+        <button onclick="toggleChat()" style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="chat-tabs">
+        <button class="chat-tab active" id="tabLive" onclick="switchTab('live')">Live Chat</button>
+        <button class="chat-tab" id="tabPM" onclick="switchTab('pm')">Private Messages</button>
+      </div>
+
+      <!-- Live Chat Panel -->
+      <div id="panelLive" class="chat-body">
+        <div id="liveMessages" class="messages-box"></div>
+        <div class="chat-footer">
+          <input type="text" id="liveInput" class="chat-input" placeholder="Message live chat..." onkeypress="handleEnter(event, sendLiveMessage)">
+          <button class="send-btn" onclick="sendLiveMessage()">Send</button>
         </div>
       </div>
-    `;
 
-    // Initialize Pusher Client
-    const pusher = new Pusher('c33c47677ef3d8d8a413', {
-      cluster: 'us2'
+      <!-- Private Messages Panel -->
+      <div id="panelPM" class="chat-body" style="display: none;">
+        <div style="padding-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 0.25rem;">
+          <input type="text" id="pmTargetInput" class="chat-input" placeholder="Enter target username...">
+          <button class="send-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openPMConversation()">Select</button>
+        </div>
+        <div id="pmRequestBanner"></div>
+        <div id="pmMessages" class="messages-box">Type a username above to start or continue a private conversation.</div>
+        <div class="chat-footer">
+          <input type="text" id="pmInput" class="chat-input" placeholder="Private message..." onkeypress="handleEnter(event, sendPM)">
+          <button class="send-btn" onclick="sendPM()">Send</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Toggle & Tabs
+  window.toggleChat = function() {
+    const win = document.getElementById('chatWindow');
+    win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+  };
+
+  window.switchTab = function(tab) {
+    document.getElementById('tabLive').classList.toggle('active', tab === 'live');
+    document.getElementById('tabPM').classList.toggle('active', tab === 'pm');
+    document.getElementById('panelLive').style.display = tab === 'live' ? 'flex' : 'none';
+    document.getElementById('panelPM').style.display = tab === 'pm' ? 'flex' : 'none';
+  };
+
+  window.handleEnter = function(e, actionFn) {
+    if (e.key === 'Enter') actionFn();
+  };
+
+  // --- Pusher Setup ---
+  const pusher = new Pusher('c33c47677ef3d8d8a413', { cluster: 'us2' });
+  const liveChannel = pusher.subscribe('chat-room');
+  const userChannel = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
+
+  // Storage for Live Chat
+  let localLiveCache = JSON.parse(localStorage.getItem('live_chat_cache') || '[]');
+  const now = Date.now();
+  localLiveCache = localLiveCache.filter(m => (now - m.timestamp) < 86400000); // Keep for 1 day
+  localStorage.setItem('live_chat_cache', JSON.stringify(localLiveCache));
+
+  function renderLiveMessages() {
+    const box = document.getElementById('liveMessages');
+    box.innerHTML = '';
+    const oneHourAgo = Date.now() - 3600000;
+    const recent = localLiveCache.filter(m => m.timestamp >= oneHourAgo);
+
+    recent.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'msg-item';
+      div.innerHTML = `<span class="msg-user">${m.user}:</span> ${m.msg}`;
+      box.appendChild(div);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+  renderLiveMessages();
+
+  liveChannel.bind('new-message', function(data) {
+    localLiveCache.push({ user: data.username, msg: data.message, timestamp: data.timestamp });
+    localStorage.setItem('live_chat_cache', JSON.stringify(localLiveCache));
+    renderLiveMessages();
+  });
+
+  window.sendLiveMessage = async function() {
+    const input = document.getElementById('liveInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    await fetch('/api/send-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'live', sender: currentUser, message })
+    });
+    input.value = '';
+  };
+
+  // --- 100% Pusher Private Messaging Logic ---
+  let activePMTarget = '';
+  let pmStore = JSON.parse(localStorage.getItem('pm_store') || '{}'); // Local PM history storage
+  let acceptedContacts = JSON.parse(localStorage.getItem('pm_accepted_contacts') || '[]');
+
+  function savePMStore() {
+    localStorage.setItem('pm_store', JSON.stringify(pmStore));
+  }
+
+  function saveAcceptedContacts() {
+    localStorage.setItem('pm_accepted_contacts', JSON.stringify(acceptedContacts));
+  }
+
+  window.openPMConversation = function() {
+    const target = document.getElementById('pmTargetInput').value.trim();
+    if (!target) return alert('Enter a target username.');
+    if (target.toLowerCase() === currentUser.toLowerCase()) return alert('You cannot PM yourself.');
+
+    activePMTarget = target;
+    renderPMThread();
+  };
+
+  function renderPMThread() {
+    const box = document.getElementById('pmMessages');
+    const banner = document.getElementById('pmRequestBanner');
+    box.innerHTML = '';
+    banner.innerHTML = '';
+
+    if (!activePMTarget) return;
+
+    const threadKey = [currentUser.toLowerCase(), activePMTarget.toLowerCase()].sort().join('_');
+    const thread = pmStore[threadKey] || [];
+    const isAccepted = acceptedContacts.includes(activePMTarget.toLowerCase());
+
+    if (!isAccepted && thread.length === 0) {
+      box.innerHTML = `<div style="color: #64748b;">No chat history with ${activePMTarget}. Send a message to send a chat request!</div>`;
+      return;
+    }
+
+    thread.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'msg-item';
+      div.innerHTML = `<span class="msg-user">${m.sender}:</span> ${m.message}`;
+      box.appendChild(div);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+
+  window.sendPM = async function() {
+    const input = document.getElementById('pmInput');
+    const message = input.value.trim();
+    if (!message || !activePMTarget) return alert('Enter a target username first!');
+
+    const isAccepted = acceptedContacts.includes(activePMTarget.toLowerCase());
+    const eventType = isAccepted ? 'pm' : 'pm-request';
+
+    // Save locally
+    const threadKey = [currentUser.toLowerCase(), activePMTarget.toLowerCase()].sort().join('_');
+    if (!pmStore[threadKey]) pmStore[threadKey] = [];
+    pmStore[threadKey].push({ sender: currentUser, message, timestamp: Date.now() });
+    savePMStore();
+
+    // Trigger via Pusher to target user's personal channel
+    await fetch('/api/send-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: eventType, sender: currentUser, recipient: activePMTarget, message })
     });
 
-    // Subscribe to chat channel
-    const channel = pusher.subscribe('chat-room');
+    input.value = '';
+    renderPMThread();
+  };
 
-    // Listen for incoming messages
-    channel.bind('new-message', function(data) {
-      appendMessage(data.username, data.message);
-    });
+  // Listen on individual channel for incoming requests, acceptances, and PMs
+  userChannel.bind('pm-event', function(data) {
+    const senderLower = data.sender.toLowerCase();
+    const threadKey = [currentUser.toLowerCase(), senderLower].sort().join('_');
 
-    // Send chat message function
-    window.sendChatMessage = async function() {
-      const input = document.getElementById('chatInput');
-      const message = input.value.trim();
-      const username = localStorage.getItem('loggedUser') || 'Guest';
+    if (!pmStore[threadKey]) pmStore[threadKey] = [];
+    pmStore[threadKey].push({ sender: data.sender, message: data.message, timestamp: data.timestamp });
+    savePMStore();
 
-      if (!message) return;
+    if (data.type === 'pm-request') {
+      const banner = document.getElementById('pmRequestBanner');
+      banner.innerHTML = `
+        <div style="background:#fef3c7; padding:8px; border-radius:6px; margin: 4px 0; font-size: 0.8rem;">
+          <strong>${data.sender}</strong> sent you a PM request.
+          <button onclick="acceptRequest('${data.sender}')" style="background:#10b981; color:white; border:none; padding:3px 6px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:6px;">Accept</button>
+        </div>
+      `;
+    }
 
-      try {
-        await fetch('/api/send-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, message })
-        });
-        input.value = '';
-      } catch (err) {
-        console.error('Failed to send message:', err);
-      }
-    };
-
-    // Helper to display incoming messages
-    function appendMessage(user, msg) {
-      const container = document.getElementById('chatMessages');
-      if (container) {
-        const msgElement = document.createElement('div');
-        msgElement.style.marginBottom = '6px';
-        msgElement.innerHTML = `<strong>${user}:</strong> ${msg}`;
-        container.appendChild(msgElement);
-        container.scrollTop = container.scrollHeight;
+    if (data.type === 'pm-accept') {
+      if (!acceptedContacts.includes(senderLower)) {
+        acceptedContacts.push(senderLower);
+        saveAcceptedContacts();
       }
     }
-  }
+
+    if (activePMTarget.toLowerCase() === senderLower) {
+      renderPMThread();
+    }
+  });
+
+  window.acceptRequest = async function(sender) {
+    const senderLower = sender.toLowerCase();
+    if (!acceptedContacts.includes(senderLower)) {
+      acceptedContacts.push(senderLower);
+      saveAcceptedContacts();
+    }
+
+    await fetch('/api/send-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'pm-accept', sender: currentUser, recipient: sender, message: 'Accepted request' })
+    });
+
+    document.getElementById('pmRequestBanner').innerHTML = '';
+    renderPMThread();
+  };
+
+})();
 </script>
 </body>
 </html>
