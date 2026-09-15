@@ -81,19 +81,37 @@
       </div>
     </div>
 
-    <!-- 2. System-Wide Banner Management -->
+    <!-- 2. Targeted Alert Banner Management -->
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title">System-Wide Alert Banner</h2>
+        <h2 class="card-title">System & Targeted Alert Banner</h2>
       </div>
       <div class="form-group">
-        <input type="text" id="announcementInput" class="form-input" placeholder="Type announcement message for all users...">
-        <button class="refresh-btn" onclick="saveAnnouncement()">Set Banner</button>
+        <input type="text" id="announcementInput" class="form-input" placeholder="Type announcement message...">
+        <input type="text" id="targetUserInput" class="form-input" placeholder="Target User (Optional)" style="max-width: 180px;">
+        <select id="targetRoleInput" class="form-input" style="max-width: 130px;">
+          <option value="">All Roles</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="owner">Owner</option>
+        </select>
+        <button class="refresh-btn" onclick="saveTargetedAnnouncement()">Set Banner</button>
         <button class="delete-btn" onclick="clearAnnouncement()">Clear Banner</button>
       </div>
     </div>
 
-    <!-- 3. Live Active Sessions -->
+    <!-- 3. Offline Pre-emptive Kick -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Remote Kick Tool</h2>
+      </div>
+      <div class="form-group">
+        <input type="text" id="manualKickUsername" class="form-input" placeholder="Enter target username to kick (active or offline)...">
+        <button class="kick-btn" style="padding: 0.5rem 1rem;" onclick="kickOfflineUser()">Pre-emptive Temp Kick</button>
+      </div>
+    </div>
+
+    <!-- 4. Live Active Sessions -->
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">Live Active Sessions</h2>
@@ -115,7 +133,7 @@
       </table>
     </div>
 
-    <!-- 4. User Management -->
+    <!-- 5. User Management -->
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">User Account Suite</h2>
@@ -187,13 +205,10 @@
       }
     }
 
-    // --- KICK USER FIX ---
     async function kickUser(username) {
       if (!confirm(`Are you sure you want to kick ${username}?`)) return;
 
       try {
-        // Updated endpoint target to match your backend function endpoint:
-        // Adjust endpoint URL if your file is named /api/active-user instead of /api/kick-user
         const res = await fetch('/api/kick-user', {
           method: 'POST',
           headers: { 
@@ -206,14 +221,42 @@
         const data = await res.json();
 
         if (res.ok) {
-          alert(`Successfully revoked session for ${username}`);
-          loadActiveUsers(); // Immediate UI update
+          alert(`Revoked session for ${username}`);
+          loadActiveUsers();
         } else {
-          alert(`Failed to kick user: ${data.message || 'Server returned an error'}`);
+          alert(`Failed to kick user: ${data.message || 'Error occurred'}`);
         }
       } catch (err) {
         console.error('Error kicking user:', err);
-        alert('Network error when attempting to kick user.');
+      }
+    }
+
+    async function kickOfflineUser() {
+      const username = document.getElementById('manualKickUsername').value.trim();
+      if (!username) return alert('Please enter a target username.');
+
+      if (!confirm(`Set pre-emptive kick for ${username}?`)) return;
+
+      try {
+        const res = await fetch('/api/kick-user', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-owner-auth': OWNER_SECRET 
+          },
+          body: JSON.stringify({ username })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert(`Pre-emptive kick queued for ${username}. They will be redirected upon next heartbeat/login.`);
+          document.getElementById('manualKickUsername').value = '';
+          loadActiveUsers();
+        } else {
+          alert(`Error: ${data.message}`);
+        }
+      } catch (err) {
+        console.error('Failed to send kick command:', err);
       }
     }
 
@@ -326,16 +369,29 @@
       if (res.ok) loadRegisteredUsers();
     }
 
-    // --- Announcements ---
-    async function saveAnnouncement() {
+    // --- Targeted Banner Management ---
+    async function saveTargetedAnnouncement() {
       const message = document.getElementById('announcementInput').value;
-      await fetch('/api/announcement', {
+      const targetUser = document.getElementById('targetUserInput').value.trim();
+      const targetRole = document.getElementById('targetRoleInput').value;
+
+      if (!message) return alert('Please enter an announcement message.');
+
+      const res = await fetch('/api/announcement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
-        body: JSON.stringify({ message })
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-owner-auth': OWNER_SECRET 
+        },
+        body: JSON.stringify({ message, targetUser, targetRole })
       });
-      alert('System banner updated!');
-      loadBanner();
+
+      if (res.ok) {
+        alert('Banner set successfully!');
+        loadBanner();
+      } else {
+        alert('Failed to set banner.');
+      }
     }
 
     async function clearAnnouncement() {
@@ -344,45 +400,36 @@
         headers: { 'x-owner-auth': OWNER_SECRET }
       });
       document.getElementById('announcementInput').value = '';
+      document.getElementById('targetUserInput').value = '';
+      document.getElementById('targetRoleInput').value = '';
       alert('System banner cleared!');
       loadBanner();
     }
 
-    
-  async function loadBanner() {
-  try {
-    const res = await fetch('/api/announcement');
-    const data = await res.json();
-    const banner = document.getElementById('siteAnnouncementBanner');
+    async function loadBanner() {
+      try {
+        const res = await fetch('/api/announcement');
+        const data = await res.json();
+        const banner = document.getElementById('siteAnnouncementBanner');
 
-    if (!banner) return;
-
-    if (data.success && data.announcement) {
-      const currentUser = localStorage.getItem('loggedUser');
-      const currentRole = localStorage.getItem('role');
-
-      // Check targeting conditions:
-      const isGlobal = !data.targetUser && !data.targetRole;
-      const matchesUser = data.targetUser && currentUser && data.targetUser.toLowerCase() === currentUser.toLowerCase();
-      const matchesRole = data.targetRole && currentRole && data.targetRole.toLowerCase() === currentRole.toLowerCase();
-
-      // Show banner only if it applies to this user
-      if (isGlobal || matchesUser || matchesRole) {
-        banner.innerText = data.announcement;
-        banner.style.display = 'block';
-        return;
+        if (data.success && data.announcement) {
+          banner.innerText = data.announcement;
+          banner.style.display = 'block';
+        } else {
+          banner.style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Banner load error:', err);
       }
     }
 
-    banner.style.display = 'none';
-  } catch (err) {
-    console.error('Banner load error:', err);
-  }
-}
+    // Initializations
+    loadRegisteredUsers();
+    loadActiveUsers();
+    loadBanner();
 
-// Load on page load
-loadBanner();
-  
+    // Periodic auto-refresh for active sessions (every 10 seconds)
+    setInterval(loadActiveUsers, 10000);
   </script>
 </body>
 </html>
