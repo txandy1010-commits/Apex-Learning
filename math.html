@@ -973,25 +973,39 @@ function applyTheme(theme){
 </script>
   <script>
   async function loadBanner() {
-    try {
-      const res = await fetch('/api/announcement');
-      const data = await res.json();
-      const banner = document.getElementById('siteAnnouncementBanner');
-      
-      if (data.success && data.announcement) {
+  try {
+    const res = await fetch('/api/announcement');
+    const data = await res.json();
+    const banner = document.getElementById('siteAnnouncementBanner');
+
+    if (!banner) return;
+
+    if (data.success && data.announcement) {
+      const currentUser = localStorage.getItem('loggedUser');
+      const currentRole = localStorage.getItem('role');
+
+      // Check targeting conditions:
+      const isGlobal = !data.targetUser && !data.targetRole;
+      const matchesUser = data.targetUser && currentUser && data.targetUser.toLowerCase() === currentUser.toLowerCase();
+      const matchesRole = data.targetRole && currentRole && data.targetRole.toLowerCase() === currentRole.toLowerCase();
+
+      // Show banner only if it applies to this user
+      if (isGlobal || matchesUser || matchesRole) {
         banner.innerText = data.announcement;
         banner.style.display = 'block';
-      } else {
-        banner.style.display = 'none';
+        return;
       }
-    } catch (err) {
-      console.error('Banner error:', err);
     }
-  }
 
-  loadBanner();
-  setInterval(loadBanner, 30000);
-</script>
+    banner.style.display = 'none';
+  } catch (err) {
+    console.error('Banner load error:', err);
+  }
+}
+
+// Load on page load
+loadBanner();
+  </script>
 </body>
 </html>
 </body>
