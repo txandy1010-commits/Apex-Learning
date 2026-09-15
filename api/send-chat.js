@@ -13,22 +13,38 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { username, message } = req.body;
-
-  if (!username || !message) {
-    return res.status(400).json({ message: 'Missing username or message.' });
-  }
+  const { type, sender, recipient, message } = req.body;
 
   try {
-    await pusher.trigger('chat-room', 'new-message', {
-      username,
-      message,
-      timestamp: new Date().toISOString()
-    });
+    // 1. Handle Live Chat Broadcast
+    if (type === 'live') {
+      await pusher.trigger('chat-room', 'new-message', {
+        username: sender,
+        message,
+        timestamp: Date.now()
+      });
+      return res.status(200).json({ success: true });
+    }
 
-    return res.status(200).json({ success: true });
+    // 2. Handle Private Message or Direct Chat Request via Pusher
+    if (type === 'pm' || type === 'pm-request' || type === 'pm-accept') {
+      if (!recipient) return res.status(400).json({ message: 'Recipient required' });
+
+      // Target the recipient's individual user channel
+      await pusher.trigger(`user-${recipient.toLowerCase()}`, 'pm-event', {
+        type,
+        sender,
+        recipient,
+        message,
+        timestamp: Date.now()
+      });
+
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(400).json({ message: 'Invalid message type' });
   } catch (error) {
-    console.error('Pusher trigger error:', error);
-    return res.status(500).json({ message: 'Failed to broadcast message.' });
+    console.error('Pusher error:', error);
+    return res.status(500).json({ message: 'Failed to deliver message via Pusher' });
   }
 }
