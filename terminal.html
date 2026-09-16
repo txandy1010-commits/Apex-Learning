@@ -388,41 +388,6 @@
       display: block;
     }
 
-    .ugs-body {
-      background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
-      min-height: 100%;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      color: white;
-      font-family: Arial, sans-serif;
-      overflow-y: auto;
-    }
-
-    .ugs-sidebar {
-      position: sticky;
-      left: 0;
-      top: 0;
-      width: 80px;
-      height: 100%;
-      min-height: 100vh;
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-      padding: 20px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      overflow-y: auto;
-      box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-      z-index: 1000;
-    }
-
-    .ugs-main-content {
-      margin-left: 20px;
-      flex: 1;
-      padding: 20px;
-    }
-
     /* Floating Corner Bubble Chat Widget */
     #chatBubbleWrapper {
       position: fixed; bottom: 20px; right: 20px; z-index: 9999;
@@ -552,7 +517,7 @@
                 <div class="game-title" style="color: #c084fc;">ADMINISTRATION SUITE</div>
                 <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Unlock restricted admin games and experimental controls.</p>
               </div>
-              <button class="game-launch-btn admin-launch-btn" onclick="unlockAdminPages()">Access Admin Pages</button>
+              <button class="game-launch-btn admin-launch-btn" onclick="switchPage('math')">Access Admin Pages</button>
             </div>
           </div>
 
@@ -601,17 +566,7 @@
     </div>
 
     <div id="pageExperimental" class="page-view">
-      <div class="ugs-body">
-        <div class="ugs-sidebar" id="sidebar"></div>
-        <div class="ugs-main-content">
-          <h1 style="text-align: center; margin-bottom: 30px;">UGS Files</h1>
-          <h2 style="color: white; text-align: center; margin-bottom: 30px; font-weight: normal; font-size: 18px;">
-            <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none;">
-            <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isn't loading</button>
-          </h2> 
-          <div id="sections-container"></div>
-        </div>
-      </div>
+      <iframe id="experimentalFrame" src="" allowfullscreen="true"></iframe>
     </div>
   </div>
 
@@ -644,25 +599,22 @@
     let openedGames = {};
     let activeTabId = null;
 
+    function checkAdminStatus() {
+      const role = (localStorage.getItem('role') || '').toLowerCase();
+      const isAdmin = localStorage.getItem('isAdmin') === 'true' || role === 'admin' || role === 'owner';
+      return isAdmin;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      const isAdmin = localStorage.getItem('isAdmin') === 'true';
-      if (isAdmin) {
+      if (checkAdminStatus()) {
         document.getElementById('adminCard').style.display = 'flex';
+        document.getElementById('tabMathBtn').style.display = 'inline-block';
+        document.getElementById('tabExperimentalBtn').style.display = 'inline-block';
       }
     });
 
-    function unlockAdminPages() {
-      if (localStorage.getItem('isAdmin') !== 'true') {
-        alert("Access Denied: Admin privileges required.");
-        return;
-      }
-      document.getElementById('tabMathBtn').style.display = 'inline-block';
-      document.getElementById('tabExperimentalBtn').style.display = 'inline-block';
-      switchPage('math');
-    }
-
     function switchPage(pageKey) {
-      if ((pageKey === 'experimental' || pageKey === 'math') && localStorage.getItem('isAdmin') !== 'true') {
+      if ((pageKey === 'experimental' || pageKey === 'math') && !checkAdminStatus()) {
         alert("Access Denied: Admin privileges required.");
         return;
       }
@@ -705,14 +657,7 @@
         document.getElementById('tabExperimentalBtn').classList.add('active');
         document.getElementById('pageExperimental').classList.add('active');
         if (!experimentalLoaded) {
-          const s1 = document.createElement('script');
-          s1.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/searchbut.js';
-          document.body.appendChild(s1);
-
-          const s2 = document.createElement('script');
-          s2.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js';
-          document.body.appendChild(s2);
-
+          document.getElementById('experimentalFrame').src = 'more.html';
           experimentalLoaded = true;
         }
       }
@@ -729,7 +674,7 @@
       } else if (activePage === 'math') {
         toggleFullscreen('mathFrame');
       } else if (activePage === 'experimental') {
-        toggleFullscreen('pageExperimental');
+        toggleFullscreen('experimentalFrame');
       }
     }
 
