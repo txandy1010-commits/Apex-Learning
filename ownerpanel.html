@@ -569,6 +569,104 @@
   </script>
   <!-- Load Pusher JS Client Library -->
 <!-- Load Pusher JS Library -->
-<script src="chat.js"></script>
+<!-- Pusher Client Library -->
+<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+
+<!-- Embedded Floating Chat Widget -->
+<div id="floatingChatWidget" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: system-ui, sans-serif;">
+  <!-- Toggle Button -->
+  <button id="chatToggleBtn" onclick="toggleChatWindow()" style="background: #2563eb; color: #fff; border: none; padding: 12px 18px; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    💬 Chat
+  </button>
+
+  <!-- Chat Window Panel -->
+  <div id="chatWindow" style="display: none; width: 320px; height: 420px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); flex-direction: column; overflow: hidden; position: absolute; bottom: 50px; right: 0;">
+    <!-- Header -->
+    <div style="background: #2563eb; color: #fff; padding: 12px 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+      <span>Live Global Chat</span>
+      <button onclick="toggleChatWindow()" style="background: transparent; border: none; color: #fff; font-size: 16px; cursor: pointer;">✕</button>
+    </div>
+
+    <!-- Message Display Container -->
+    <div id="chatContainer" style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #f8fafc;">
+      <div style="font-size: 0.8rem; color: #64748b; text-align: center;">Welcome to global chat!</div>
+    </div>
+
+    <!-- Input Controls -->
+    <form onsubmit="handleChatSubmit(event)" style="display: flex; border-top: 1px solid #e2e8f0; padding: 8px; background: #fff;">
+      <input type="text" id="chatInput" placeholder="Type a message..." style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 0.9rem;" required />
+      <button type="submit" style="margin-left: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">Send</button>
+    </form>
+  </div>
+</div>
+
+<!-- Frontend Chat Logic -->
+<script>
+  (function() {
+    // 1. Initialize Pusher
+    const PUSHER_KEY = 'c33c47677ef3d8d8a413'; // Your public key
+    const PUSHER_CLUSTER = 'us2';
+    
+    const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+    const currentUser = localStorage.getItem('loggedUser') || 'Guest';
+
+    // 2. Listen to Global Chat Channel
+    const globalChannel = pusher.subscribe('global-chat');
+    globalChannel.bind('message', function(data) {
+      appendChatMessage(data.sender, data.message, data.created_at);
+    });
+
+    // 3. UI Helpers
+    window.toggleChatWindow = function() {
+      const win = document.getElementById('chatWindow');
+      win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+    };
+
+    window.handleChatSubmit = async function(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+
+      try {
+        await fetch('/api/send-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'live',
+            sender: currentUser,
+            message: text
+          })
+        });
+      } catch (err) {
+        console.error('Failed to send message:', err);
+      }
+    };
+
+    function appendChatMessage(sender, message, timestamp) {
+      const container = document.getElementById('chatContainer');
+      if (!container) return;
+
+      const isMe = sender.toLowerCase() === currentUser.toLowerCase();
+      const msgDiv = document.createElement('div');
+      
+      msgDiv.style.cssText = `max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; word-break: break-word; ${
+        isMe 
+          ? 'align-self: flex-end; background: #2563eb; color: #ffffff;' 
+          : 'align-self: flex-start; background: #e2e8f0; color: #0f172a;'
+      }`;
+
+      const cleanMessage = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+      msgDiv.innerHTML = `<strong style="font-size: 0.75rem; display: block; opacity: 0.8;">${sender}</strong>${cleanMessage}<span style="font-size: 0.65rem; display: block; text-align: right; opacity: 0.7; margin-top: 2px;">${timeStr}</span>`;
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+  })();
+</script>
 </body>
 </html>
