@@ -1,3 +1,4 @@
+document.title="goggle";
 (function () {
   // 1. Inject Styles
   const style = document.createElement('style');
