@@ -48,9 +48,10 @@ document.title = "google.com";
       position: relative; 
       font-size: 13px; 
       line-height: 1.4; 
-      touch-action: pan-y; 
+      touch-action: pan-y pinch-zoom;
       transition: transform 0.1s ease-out;
       user-select: none;
+      -webkit-user-select: none;
       cursor: grab;
     }
     .chat-message:active { cursor: grabbing; }
@@ -439,10 +440,11 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Renderer with Fixed Dual-Swipe
+    // Message Renderer with iPad/Mobile Touch Support & Trash Icon
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
+      const isOwnMessage = sender.toLowerCase() === currentUser.toLowerCase();
 
       const msgDiv = document.createElement('div');
       msgDiv.className = `chat-message ${isPrivate ? 'pm' : ''}`;
@@ -458,13 +460,27 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       msgDiv.innerHTML = `
-        <div>
-          ${replyPrefixHTML}
-          <span class="author">${escapeHtml(sender)}</span>
-          <span class="timestamp">${timeFormatted}</span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            ${replyPrefixHTML}
+            <span class="author">${escapeHtml(sender)}</span>
+            <span class="timestamp">${timeFormatted}</span>
+          </div>
+          ${isOwnMessage ? `<span class="delete-btn" style="cursor: pointer; opacity: 0.6; padding: 0 4px;" title="Delete Message">🗑️</span>` : ''}
         </div>
         <div>${escapeHtml(message)}</div>
       `;
+
+      // Tap Listener for Trash Icon
+      if (isOwnMessage) {
+        const deleteBtn = msgDiv.querySelector('.delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            promptDeleteConfirmation(id);
+          });
+        }
+      }
 
       // Encapsulated Swipe Logic
       let startX = 0;
@@ -480,13 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } 
         // Swipe Left (deltaX < -35) -> Delete Prompt
         else if (deltaX < -35) {
-          if (sender.toLowerCase() === currentUser.toLowerCase() && id) {
+          if (isOwnMessage && id) {
             promptDeleteConfirmation(id);
           }
         }
       };
 
-      // Touch Events
+      // Touch Events (iPad/iOS Supported)
       msgDiv.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         currentX = startX;
