@@ -1,57 +1,48 @@
-import Pusher from "pusher";
+import Pusher from 'pusher';
 
-// Initialize Pusher using environment variables for security
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
   key: process.env.PUSHER_KEY,
   secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER || "us2",
+  cluster: process.env.PUSHER_CLUSTER,
   useTLS: true
 });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Accept either 'type' or 'action' so front-end calls work smoothly
-  const { type, action, sender, recipient, message } = req.body;
-  const msgType = type || action;
-
-  if (!sender || !message) {
-    return res.status(400).json({ message: 'Sender and message required' });
-  }
+  const { action, id, sender, recipient, message, replyTo } = req.body;
 
   try {
-    // 1. Live Global Chat Broadcast
-    if (msgType === 'live') {
-      await pusher.trigger('global-chat', 'message', {
-        sender,
-        message,
-        created_at: new Date().toISOString()
-      });
-      return res.status(200).json({ success: true });
-    }
-
-    // 2. Direct Message to Specific User Channel
-    if (msgType === 'pm' || recipient) {
-      if (!recipient) {
-        return res.status(400).json({ message: 'Recipient required for direct messages' });
+    // 1. Handle Message Deletion
+    if (action === 'delete') {
+      if (recipient === 'global') {
+        await pusher.trigger('global-chat', 'delete-message', { id });
+      } else if (recipient) {
+        await pusher.trigger(`user-${recipient.toLowerCase()}`, 'delete-message', { id });
+        await pusher.trigger(`user-${sender.toLowerCase()}`, 'delete-message', { id });
       }
+      return res.status(200).json({ success: true, action: 'deleted' });
+    }
 
+    // 2. Handle Direct Messages
+    if (action === 'pm' && recipient) {
       await pusher.trigger(`user-${recipient.toLowerCase()}`, 'direct-message', {
-        sender,
-        recipient: recipient.toLowerCase(),
-        message,
-        created_at: new Date().toISOString()
+        id, sender, recipient, message, replyTo, created_at: new Date().toISOString()
       });
-
       return res.status(200).json({ success: true });
     }
 
-    return res.status(400).json({ message: 'Invalid message payload' });
+    // 3. Handle Global Live Messages
+    await pusher.trigger('global-chat', 'message', {
+      id, sender, message, replyTo, created_at: new Date().toISOString()
+    });
+
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Pusher dispatch error:', error);
-    return res.status(500).json({ message: 'Failed to deliver message via Pusher' });
+    console.error('Pusher error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
