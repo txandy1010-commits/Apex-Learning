@@ -1,4 +1,6 @@
 // 1. Inject Visual Styles (CSS)
+document.title = "google.com";
+
 (function injectStyles() {
   const style = document.createElement('style');
   style.innerHTML = `
