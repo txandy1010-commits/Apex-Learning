@@ -1,4 +1,4 @@
-document.title="google";
+document.title="Google";
 (function () {
   // 1. Inject Styles
   const style = document.createElement('style');
