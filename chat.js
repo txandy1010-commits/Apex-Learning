@@ -1,6 +1,37 @@
-document.title="Google";
 (function () {
-  // 1. Inject Styles
+  // 1. Dynamic Bad Word Filter State
+  let bannedWordsList = [];
+
+  async function fetchBannedWordsFromNeon() {
+    try {
+      const res = await fetch('/api/get-bad-words');
+      const data = await res.json();
+      if (data.bannedWords && Array.isArray(data.bannedWords)) {
+        bannedWordsList = data.bannedWords.map(w => w.toLowerCase());
+      }
+    } catch (err) {
+      console.error('Failed to load banned words from Neon:', err);
+    }
+  }
+
+  function containsBadWords(text) {
+    if (!bannedWordsList.length) return false;
+
+    // Normalize text: lowercase and strip common leetspeak/punctuation tricks
+    const normalized = text.toLowerCase()
+      .replace(/[@@]/g, 'a')
+      .replace(/[$$]/g, 's')
+      .replace(/[1!]/g, 'i')
+      .replace(/0/g, 'o')
+      .replace(/3/g, 'e');
+
+    return bannedWordsList.some(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'i');
+      return regex.test(normalized) || normalized.includes(word);
+    });
+  }
+
+  // 2. Inject Styles
   const style = document.createElement('style');
   style.innerHTML = `
     #chat-widget-toggle {
@@ -24,7 +55,6 @@ document.title="Google";
     #chat-widget-toggle:hover {
       transform: scale(1.08);
     }
-    /* Red Dot Badge */
     #chat-widget-toggle.has-unread::after {
       content: '';
       position: absolute;
@@ -110,7 +140,6 @@ document.title="Google";
       background-color: #35373c;
       color: #f2f3f5;
     }
-    /* Bright White Highlight for Unread DMs */
     .sidebar-item.has-unread {
       color: #ffffff !important;
       font-weight: bold;
@@ -213,7 +242,7 @@ document.title="Google";
   `;
   document.head.appendChild(style);
 
-  // 2. Inject HTML
+  // 3. Inject HTML
   const widgetHTML = `
     <div id="chat-widget-toggle">💬</div>
     <div id="chat-widget-box">
@@ -246,7 +275,7 @@ document.title="Google";
   wrapper.innerHTML = widgetHTML;
   document.body.appendChild(wrapper);
 
-  // 3. UI References & State Variables
+  // 4. UI References & State Variables
   const toggleBtn = document.getElementById('chat-widget-toggle');
   const box = document.getElementById('chat-widget-box');
   const closeBtn = document.getElementById('chat-close-btn');
@@ -275,7 +304,7 @@ document.title="Google";
     box.style.display = 'flex';
   }
 
-  // 4. LocalStorage Helpers
+  // 5. LocalStorage Helpers
   function getStorageKey(target) {
     return `chat_history_${target.toLowerCase()}`;
   }
@@ -295,7 +324,7 @@ document.title="Google";
     localStorage.setItem(getStorageKey(target), JSON.stringify(history));
   }
 
-  // 5. Sidebar & UI Logic
+  // 6. Sidebar & UI Logic
   function addUserToSidebar(username) {
     if (!username || username === 'Anonymous' || username.toLowerCase() === getLoggedUser().toLowerCase()) return;
     if (document.querySelector(`.sidebar-item[data-target="${username}"]`)) return;
@@ -347,7 +376,6 @@ document.title="Google";
     const currentUser = getLoggedUser();
     const currentRole = getLoggedRole();
 
-    // Owner can delete anyone's messages; Admins and Regular Users can only delete their own
     const isOwner = currentRole === 'owner';
     const isSelf = msgData.sender.toLowerCase() === currentUser.toLowerCase();
     const canDelete = isOwner || isSelf;
@@ -364,12 +392,10 @@ document.title="Google";
       </div>
     `;
 
-    // Reply Button Handler
     msgDiv.querySelector('.reply-btn').addEventListener('click', () => {
       triggerReplyMode(msgData);
     });
 
-    // Delete Button Handler
     if (canDelete) {
       msgDiv.querySelector('.delete-btn').addEventListener('click', async () => {
         if (confirm('Delete this message?')) {
@@ -389,7 +415,6 @@ document.title="Google";
       });
     }
 
-    // Touch Swipe Right to Reply
     let touchStartX = 0;
     let touchCurrentX = 0;
 
@@ -426,7 +451,7 @@ document.title="Google";
 
   cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
-  // 6. Pusher Subscriptions
+  // 7. Pusher Subscriptions
   const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_PUSHER_CLUSTER' });
 
   const globalChan = pusher.subscribe('global-chat');
@@ -477,7 +502,7 @@ document.title="Google";
     });
   }
 
-  // 7. Network Requests
+  // 8. Network Requests & Message Sending
   async function fetchUsersFromNeon() {
     try {
       const res = await fetch('/api/get-users');
@@ -493,6 +518,13 @@ document.title="Google";
   async function handleSend() {
     const text = inputEl.value.trim();
     if (!text) return;
+
+    // Bad Word Validation Check via Neon DB
+    if (containsBadWords(text)) {
+      alert('Please keep the chat appropriate. Inappropriate language is not allowed.');
+      inputEl.value = '';
+      return;
+    }
 
     const msgId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
     const sender = getLoggedUser();
@@ -523,7 +555,7 @@ document.title="Google";
     }
   }
 
-  // 8. Event Listeners
+  // 9. Event Listeners
   toggleBtn.addEventListener('click', () => {
     const isOpening = box.style.display !== 'flex';
     box.style.display = isOpening ? 'flex' : 'none';
@@ -549,4 +581,5 @@ document.title="Google";
   // Initialization
   renderChatHistory('global');
   fetchUsersFromNeon();
+  fetchBannedWordsFromNeon();
 })();
