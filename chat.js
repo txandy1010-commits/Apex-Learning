@@ -44,15 +44,24 @@ document.title = "google.com";
     .chat-content { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
     #chatContainer { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     
-    /* Message Styling & Actions */
-    .chat-message { position: relative; font-size: 13px; line-height: 1.4; group: relative; }
+    .chat-message { 
+      position: relative; 
+      font-size: 13px; 
+      line-height: 1.4; 
+      touch-action: pan-y; 
+      transition: transform 0.1s ease-out;
+      user-select: none;
+    }
     .chat-message .author { font-weight: bold; color: #5865F2; margin-right: 4px; }
     .chat-message .timestamp { font-size: 11px; color: #949ba4; margin-left: 4px; }
     .chat-message.pm { border-left: 2px solid #f1c40f; padding-left: 6px; }
     
-    .reply-quote {
-      font-size: 11px; color: #b5bac1; background: #2b2d31; padding: 3px 6px;
-      border-left: 2px solid #5865F2; border-radius: 3px; margin-bottom: 3px;
+    .reply-prefix {
+      font-size: 11px;
+      color: #949ba4;
+      font-style: italic;
+      margin-right: 6px;
+      display: inline-block;
     }
     
     .msg-actions { display: inline-block; margin-left: 8px; font-size: 11px; }
@@ -60,7 +69,6 @@ document.title = "google.com";
     .action-btn:hover { color: #f2f3f5; }
     .action-btn.delete-btn:hover { color: #ed4245; }
 
-    /* Reply Preview Banner */
     #reply-banner {
       display: none; background: #2b2d31; padding: 4px 8px; font-size: 11px;
       color: #b5bac1; border-top: 1px solid #1e1f22; justify-content: space-between; align-items: center;
@@ -81,18 +89,37 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Define Profanity Filter
-  const BANNED_WORDS = ['badword1', 'badword2', 'swear']; // Add words here in lowercase
+  // Imported Bad Words Array
+  let bannedWordsSet = new Set();
+
+  // Load bad words list automatically from GitHub repository dataset
+  async function loadBadWords() {
+    try {
+      const response = await fetch('https://raw.githubusercontent.com/web-mechanic/badwords-list/master/badwords.txt');
+      const text = await response.text();
+      const words = text.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+      bannedWordsSet = new Set(words);
+    } catch (err) {
+      console.error('Failed to load online bad words list:', err);
+    }
+  }
+  loadBadWords();
 
   function filterProfanity(text) {
     let words = text.split(/\b/);
     return words.map(word => {
       const lower = word.toLowerCase();
-      if (BANNED_WORDS.includes(lower)) {
+      if (bannedWordsSet.has(lower)) {
         return word[0] + '*'.repeat(word.length - 1);
       }
       return word;
     }).join('');
+  }
+
+  function getFirstThreeWords(text) {
+    if (!text) return '';
+    const words = text.trim().split(/\s+/);
+    return words.slice(0, 3).join(' ');
   }
 
   // Inject UI
@@ -257,7 +284,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reply Logic
     function setReplyTarget(sender, messageText) {
       currentReplyTarget = { sender, text: messageText };
-      replyBannerText.textContent = `Replying to @${sender}: "${messageText.substring(0, 20)}..."`;
+      const shortText = getFirstThreeWords(messageText);
+      replyBannerText.textContent = `Replying to @${sender}: "${shortText}..."`;
       replyBanner.style.display = 'flex';
       inputEl.focus();
     }
@@ -372,9 +400,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const dateObj = created_at ? new Date(created_at) : new Date();
       const timeFormatted = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      let replyHTML = '';
-      if (replyTo) {
-        replyHTML = `<div class="reply-quote">┌ Replying to <b>@${escapeHtml(replyTo.sender)}</b>: ${escapeHtml(replyTo.text)}</div>`;
+      let replyPrefixHTML = '';
+      if (replyTo && replyTo.text) {
+        const firstThree = getFirstThreeWords(replyTo.text);
+        replyPrefixHTML = `<span class="reply-prefix">replying to the message "${escapeHtml(firstThree)}..."</span>`;
       }
 
       let actionsHTML = `<span class="msg-actions">`;
@@ -385,8 +414,8 @@ document.addEventListener('DOMContentLoaded', () => {
       actionsHTML += `</span>`;
 
       msgDiv.innerHTML = `
-        ${replyHTML}
         <div>
+          ${replyPrefixHTML}
           <span class="author">${escapeHtml(sender)}</span>
           <span class="timestamp">${timeFormatted}</span>
           ${actionsHTML}
@@ -394,13 +423,38 @@ document.addEventListener('DOMContentLoaded', () => {
         <div>${escapeHtml(message)}</div>
       `;
 
-      // Wire Actions
       msgDiv.querySelector('.reply-btn').addEventListener('click', () => setReplyTarget(sender, message));
       
       const deleteBtn = msgDiv.querySelector('.delete-btn');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', () => deleteMessage(id));
       }
+
+      // Swipe Right to Reply
+      let startX = 0;
+      let currentX = 0;
+
+      msgDiv.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+      }, { passive: true });
+
+      msgDiv.addEventListener('touchmove', (e) => {
+        currentX = e.touches[0].clientX;
+        const diffX = currentX - startX;
+        if (diffX > 0 && diffX < 80) {
+          msgDiv.style.transform = `translateX(${diffX}px)`;
+        }
+      }, { passive: true });
+
+      msgDiv.addEventListener('touchend', () => {
+        const diffX = currentX - startX;
+        if (diffX > 50) {
+          setReplyTarget(sender, message);
+        }
+        msgDiv.style.transform = 'translateX(0px)';
+        startX = 0;
+        currentX = 0;
+      });
 
       chatContainer.appendChild(msgDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -419,7 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Load initial users & global history
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
     loadChatHistory('global');
