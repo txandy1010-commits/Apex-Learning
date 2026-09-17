@@ -1,3 +1,4 @@
+document.title="Google";
 (function () {
   // 1. Dynamic Bad Word Filter State
   let bannedWordsList = [];
