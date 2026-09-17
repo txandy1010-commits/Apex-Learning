@@ -213,7 +213,7 @@ document.title="Google";
   `;
   document.head.appendChild(style);
 
-  // 2. Inject HTML (Removed "A Lot of Games" & "⚙️ Name" buttons)
+  // 2. Inject HTML
   const widgetHTML = `
     <div id="chat-widget-toggle">💬</div>
     <div id="chat-widget-box">
@@ -263,12 +263,15 @@ document.title="Google";
   let activeRecipient = 'global';
   let activeReply = null;
   
-  // Fetches username automatically from localStorage
   function getLoggedUser() {
     return localStorage.getItem('loggedUser') || localStorage.getItem('username') || 'Anonymous';
   }
 
-  if (getLoggedUser().toLowerCase() === 'admin') {
+  function getLoggedRole() {
+    return (localStorage.getItem('role') || '').toLowerCase();
+  }
+
+  if (getLoggedUser().toLowerCase() === 'admin' || getLoggedRole() === 'owner') {
     box.style.display = 'flex';
   }
 
@@ -342,7 +345,12 @@ document.title="Google";
     }
 
     const currentUser = getLoggedUser();
-    const canDelete = msgData.sender.toLowerCase() === currentUser.toLowerCase() || currentUser.toLowerCase() === 'admin';
+    const currentRole = getLoggedRole();
+
+    // Owner can delete anyone's messages; Admins and Regular Users can only delete their own
+    const isOwner = currentRole === 'owner';
+    const isSelf = msgData.sender.toLowerCase() === currentUser.toLowerCase();
+    const canDelete = isOwner || isSelf;
 
     msgDiv.innerHTML = `
       ${replyMarkup}
