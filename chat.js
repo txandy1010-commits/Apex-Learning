@@ -77,7 +77,7 @@ document.title = "google.com";
     .chat-input-area input { flex: 1; background: transparent; border: none; color: #f2f3f5; outline: none; }
     .chat-input-area button { background-color: #5865F2; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
-    /* Delete Confirmation Modal */
+    /* Delete Modal Styles */
     #delete-modal-overlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0,0,0,0.6); display: none; align-items: center;
@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Bad words array
   const BAD_WORDS_LIST = [
     'fuck', 'shit', 'bitch', 'ass', 'asshole', 'bastard', 'crap', 'dammit', 
     'damn', 'dick', 'pussy', 'slut', 'whore', 'cock', 'cunt', 'nigger', 'faggot'
@@ -125,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return words.slice(0, 3).join(' ');
   }
 
-  // Inject UI Markup
   if (!document.getElementById('chat-widget-toggle')) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
@@ -158,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
-    // Inject Delete Confirmation Modal
     const modalWrapper = document.createElement('div');
     modalWrapper.id = 'delete-modal-overlay';
     modalWrapper.innerHTML = `
@@ -172,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(modalWrapper);
 
-    // References
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
     const closeBtn = document.getElementById('chat-close-btn');
@@ -189,9 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('delete-modal-overlay');
     const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
     const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-    let pendingDeleteId = null;
+    
+    let pendingDeleteData = null;
 
-    // App State
     const currentUser = localStorage.getItem('loggedUser') || localStorage.getItem('username') || localStorage.getItem('user') || 'Anonymous';
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
     const PUSHER_CLUSTER = 'us2';
@@ -201,51 +197,36 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
 
-    // Modal Events (Instant Removal & Global Cleanup)
-    function promptDeleteConfirmation(msgId) {
-      pendingDeleteId = msgId;
+    function promptDeleteConfirmation(msgId, msgDiv) {
+      pendingDeleteData = { id: msgId, element: msgDiv };
       modalOverlay.style.display = 'flex';
     }
 
     confirmDeleteBtn.addEventListener('click', () => {
-      if (pendingDeleteId) {
-        // 1. Immediately remove message element from screen
-        const elementToRemove = document.querySelector(`.chat-message[data-id="${pendingDeleteId}"]`);
-        if (elementToRemove) {
-          elementToRemove.remove();
+      if (pendingDeleteData) {
+        const { id, element } = pendingDeleteData;
+
+        // 1. Remove element directly from DOM
+        if (element && element.parentNode) {
+          element.remove();
         }
 
-        // 2. Remove from all local storage keys
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('chat_history_')) {
-            let history = JSON.parse(localStorage.getItem(key) || '[]');
-            history = history.filter(m => m.id !== pendingDeleteId);
-            localStorage.setItem(key, JSON.stringify(history));
-          }
-        });
+        // 2. Clear from LocalStorage
+        if (id) {
+          removeMessageFromUIAndStorage(id);
+          deleteMessage(id);
+        }
 
-        // 3. Trigger network deletion call
-        deleteMessage(pendingDeleteId);
-        pendingDeleteId = null;
+        pendingDeleteData = null;
       }
       modalOverlay.style.display = 'none';
     });
 
     cancelDeleteBtn.addEventListener('click', () => {
-      pendingDeleteId = null;
+      pendingDeleteData = null;
       modalOverlay.style.display = 'none';
     });
 
-    // Cross-Tab Presence Sync
-    const presenceChannel = new BroadcastChannel('chat_presence');
-    presenceChannel.postMessage({ type: 'ANNOUNCE_USER', user: currentUser });
-    presenceChannel.onmessage = (e) => {
-      if (e.data && e.data.type === 'ANNOUNCE_USER') {
-        addUserToSidebarAndDropdown(e.data.user);
-      }
-    };
-
-    // Pusher Setup
     const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
 
     const globalChannel = pusher.subscribe('global-chat');
@@ -277,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Fetch users from server API
     async function fetchUsersFromNeon() {
       try {
         const response = await fetch('/api/get-users');
@@ -293,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     fetchUsersFromNeon();
 
-    // Dropdown Change Handler
     dropdownEl.addEventListener('change', (e) => {
       if (e.target.value) {
         const item = document.querySelector(`.sidebar-item[data-target="${e.target.value}"]`);
@@ -302,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Send Message
     const handleSend = async () => {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -349,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', handleSend);
     inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 
-    // Reply Banner Handlers
     function setReplyTarget(sender, messageText) {
       currentReplyTarget = { sender, text: messageText };
       const shortText = getFirstThreeWords(messageText);
@@ -365,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
-    // Delete Handlers
     async function deleteMessage(msgId) {
       try {
         await fetch('/api/send-chat', {
@@ -396,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Storage Helpers
     function saveMessage(chatKey, msgObj) {
       const key = `chat_history_${chatKey.toLowerCase()}`;
       const existing = JSON.parse(localStorage.getItem(key) || '[]');
@@ -417,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Populate Sidebar and Dropdown
     function addUserToSidebarAndDropdown(username) {
       if (!username || username.toLowerCase() === currentUser.toLowerCase() || username === 'Anonymous' || username === 'global') return;
       
@@ -457,7 +431,6 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Renderer with Touch/Drag & Trash Icon
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
@@ -488,18 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <div>${escapeHtml(message)}</div>
       `;
 
-      // Tap Listener for Trash Icon
       if (isOwnMessage) {
         const deleteBtn = msgDiv.querySelector('.delete-btn');
         if (deleteBtn) {
           deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            promptDeleteConfirmation(id);
+            promptDeleteConfirmation(id, msgDiv);
           });
         }
       }
 
-      // Swipe Logic
       let startX = 0;
       let currentX = 0;
       let isDragging = false;
@@ -509,13 +480,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (deltaX > 35) {
           setReplyTarget(sender, message);
         } else if (deltaX < -35) {
-          if (isOwnMessage && id) {
-            promptDeleteConfirmation(id);
+          if (isOwnMessage) {
+            promptDeleteConfirmation(id, msgDiv);
           }
         }
       };
 
-      // Touch Events
       msgDiv.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         currentX = startX;
@@ -534,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startX = 0; currentX = 0;
       });
 
-      // Mouse Events
       msgDiv.addEventListener('mousedown', (e) => {
         startX = e.clientX;
         currentX = startX;
@@ -581,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Startup
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
     loadChatHistory('global');
