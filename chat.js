@@ -452,7 +452,7 @@
   cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
   // 7. Pusher Subscriptions (IMPORTANT: Replace placeholders below with your Pusher App Keys)
-  const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_PUSHER_CLUSTER' });
+  const pusher = new Pusher('c33c47677ef3d8d8a413', { cluster: 'us2' });
 
   const globalChan = pusher.subscribe('global-chat');
   globalChan.bind('message', function(data) {
