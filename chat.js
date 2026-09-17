@@ -119,14 +119,19 @@
   document.head.appendChild(style);
 })();
 
-// 2. Inject Visual Elements (HTML) & Logic
+// 2. Inject Elements & Logic
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Pusher === 'undefined') {
     console.error('Pusher JS library is missing. Make sure to load Pusher before chat.js!');
     return;
   }
 
-  // Create Widget HTML
+  // Request Notification Permissions (For iPad Homescreen/PWA and Browser DMs)
+  if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+  }
+
+  // Inject HTML Markup
   if (!document.getElementById('chat-widget-toggle')) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
@@ -152,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
-    // DOM Elements
+    // Get Elements
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
     const closeBtn = document.getElementById('chat-close-btn');
@@ -162,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('chat-send-btn');
     const chatContainer = document.getElementById('chatContainer');
 
-    // UI State
+    // App Credentials & State
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
     const PUSHER_CLUSTER = 'us2';
     const currentUser = localStorage.getItem('loggedUser') || 'Anonymous';
@@ -176,10 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
       box.style.display = 'none';
     });
 
-    // Initialize Pusher
+    // Initialize Pusher Client
     const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
 
-    // Global Channel
+    // 1. Subscribe to Global Channel
     const globalChannel = pusher.subscribe('global-chat');
     globalChannel.bind('message', function(data) {
       if (activeRecipient === 'global') {
@@ -188,26 +193,25 @@ document.addEventListener('DOMContentLoaded', () => {
       addUserToSidebar(data.sender);
     });
 
-    // Private Channel
+    // 2. Subscribe to Private DM Channel
     if (currentUser !== 'Anonymous') {
       const privateChannel = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
       privateChannel.bind('direct-message', function(data) {
+        addUserToSidebar(data.sender);
+
         if (activeRecipient.toLowerCase() === data.sender.toLowerCase()) {
           renderIncomingMessage(data.sender, data.message, data.created_at, true);
         } else {
-          // If they message us while we are in another tab, ensure they are in the sidebar
-          addUserToSidebar(data.sender);
+          triggerDMNotification(data.sender, data.message);
         }
       });
     }
 
-    // Handle Input Sends
+    // Input Actions
     const handleSend = () => {
       const text = inputEl.value;
       if (text) {
         sendMessage(text, activeRecipient);
-        
-        // Render it locally right away so it feels fast
         renderIncomingMessage(currentUser, text, new Date().toISOString(), activeRecipient !== 'global');
         inputEl.value = '';
       }
@@ -218,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') handleSend();
     });
 
-    // Sidebar Logic for DMs
+    // Sidebar Logic
     function addUserToSidebar(username) {
       if (username === currentUser || username === 'Anonymous') return;
       if (document.querySelector(`.sidebar-item[data-target="${username}"]`)) return;
@@ -235,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarEl.appendChild(item);
     }
 
-    // Switch between Global and DMs
     function switchChannel(target, element) {
       activeRecipient = target;
       titleEl.textContent = target === 'global' ? '# Global Chat' : `@ ${target}`;
@@ -243,15 +246,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
       element.classList.add('active');
       
-      chatContainer.innerHTML = ''; // Clear chat area when switching tabs
+      chatContainer.innerHTML = '';
     }
 
-    // Initial listener for the "Global" sidebar item
     document.querySelector('.sidebar-item[data-target="global"]').addEventListener('click', function() {
       switchChannel('global', this);
     });
 
-    // API Call to Send Message
+    // Send API Request
     async function sendMessage(messageText, recipient) {
       if (!messageText.trim()) return;
 
@@ -274,12 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Render Message with Timestamps
+    // Message Rendering & Auto-Delete Timer
     function renderIncomingMessage(sender, message, timestamp, isPrivate) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `chat-message ${isPrivate ? 'pm' : ''}`;
       
-      // Format the timestamp nicely (e.g., 4:10 PM)
       const dateObj = timestamp ? new Date(timestamp) : new Date();
       const timeFormatted = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
@@ -291,6 +292,25 @@ document.addEventListener('DOMContentLoaded', () => {
       
       chatContainer.appendChild(msgDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Automatically delete Global Chat messages after 1 hour (3,600,000 ms)
+      if (!isPrivate) {
+        setTimeout(() => {
+          if (chatContainer.contains(msgDiv)) {
+            msgDiv.remove();
+          }
+        }, 3600000); 
+      }
+    }
+
+    // Trigger Notification for Direct Messages
+    function triggerDMNotification(sender, text) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`New DM from ${sender}`, {
+          body: text,
+          icon: '/favicon.ico'
+        });
+      }
     }
 
     function escapeHtml(str) {
