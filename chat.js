@@ -1,7 +1,7 @@
-// 1. Set Tab Title dynamically
+// 1. Set Tab Title
 document.title = "google.com";
 
-// 2. Inject Visual Styles (CSS)
+// 2. Inject CSS Styles
 (function injectStyles() {
   const style = document.createElement('style');
   style.innerHTML = `
@@ -14,7 +14,7 @@ document.title = "google.com";
     }
     #chat-widget-toggle:hover { transform: scale(1.08); }
     #chat-widget-box {
-      position: fixed; bottom: 85px; right: 20px; width: 400px; height: 500px;
+      position: fixed; bottom: 85px; right: 20px; width: 420px; height: 520px;
       background-color: #313338; color: #dbdee1; border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
       flex-direction: column; overflow: hidden; z-index: 9999;
@@ -29,21 +29,44 @@ document.title = "google.com";
     .chat-close:hover { color: #fff; }
     .chat-body { display: flex; flex: 1; overflow: hidden; }
     .chat-sidebar {
-      width: 120px; background-color: #2b2d31; border-right: 1px solid #1e1f22;
-      padding: 8px; overflow-y: auto;
+      width: 130px; background-color: #2b2d31; border-right: 1px solid #1e1f22;
+      padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+    }
+    .user-select-dropdown {
+      width: 100%; background: #383a40; color: #f2f3f5; border: 1px solid #1e1f22;
+      border-radius: 4px; padding: 4px; font-size: 11px; outline: none; cursor: pointer;
     }
     .sidebar-item {
       padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 13px;
-      color: #949ba4; margin-bottom: 4px; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
+      color: #949ba4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .sidebar-item:hover, .sidebar-item.active { background-color: #35373c; color: #f2f3f5; }
     .chat-content { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
-    #chatContainer { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-    .chat-message { font-size: 13px; line-height: 1.4; }
+    #chatContainer { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    
+    /* Message Styling & Actions */
+    .chat-message { position: relative; font-size: 13px; line-height: 1.4; group: relative; }
     .chat-message .author { font-weight: bold; color: #5865F2; margin-right: 4px; }
-    .chat-message .timestamp { font-size: 11px; color: #949ba4; margin-left: 4px; font-weight: normal; }
+    .chat-message .timestamp { font-size: 11px; color: #949ba4; margin-left: 4px; }
     .chat-message.pm { border-left: 2px solid #f1c40f; padding-left: 6px; }
+    
+    .reply-quote {
+      font-size: 11px; color: #b5bac1; background: #2b2d31; padding: 3px 6px;
+      border-left: 2px solid #5865F2; border-radius: 3px; margin-bottom: 3px;
+    }
+    
+    .msg-actions { display: inline-block; margin-left: 8px; font-size: 11px; }
+    .action-btn { color: #949ba4; cursor: pointer; margin-right: 6px; text-decoration: underline; }
+    .action-btn:hover { color: #f2f3f5; }
+    .action-btn.delete-btn:hover { color: #ed4245; }
+
+    /* Reply Preview Banner */
+    #reply-banner {
+      display: none; background: #2b2d31; padding: 4px 8px; font-size: 11px;
+      color: #b5bac1; border-top: 1px solid #1e1f22; justify-content: space-between; align-items: center;
+    }
+    #cancel-reply { cursor: pointer; color: #ed4245; font-weight: bold; }
+
     .chat-input-area { padding: 10px; background-color: #383a40; display: flex; gap: 6px; }
     .chat-input-area input { flex: 1; background: transparent; border: none; color: #f2f3f5; outline: none; }
     .chat-input-area button { background-color: #5865F2; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -51,19 +74,28 @@ document.title = "google.com";
   document.head.appendChild(style);
 })();
 
-// 3. Inject Elements & Logic
+// 3. Main Chat Script
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Pusher === 'undefined') {
-    console.error('Pusher JS library is missing. Make sure to load Pusher before chat.js!');
+    console.error('Pusher library missing!');
     return;
   }
 
-  // Request Notification Permissions
-  if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
+  // Define Profanity Filter
+  const BANNED_WORDS = ['badword1', 'badword2', 'swear']; // Add words here in lowercase
+
+  function filterProfanity(text) {
+    let words = text.split(/\b/);
+    return words.map(word => {
+      const lower = word.toLowerCase();
+      if (BANNED_WORDS.includes(lower)) {
+        return word[0] + '*'.repeat(word.length - 1);
+      }
+      return word;
+    }).join('');
   }
 
-  // Inject HTML Markup
+  // Inject UI
   if (!document.getElementById('chat-widget-toggle')) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
@@ -75,11 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="chat-body">
           <div class="chat-sidebar" id="chat-sidebar">
-            <button id="add-dm-btn" style="width: 100%; margin-bottom: 8px; background: #4e5058; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-size: 11px; font-weight: bold;">+ New DM</button>
+            <select id="user-select-dropdown" class="user-select-dropdown">
+              <option value="" disabled selected>-- DM a User --</option>
+            </select>
             <div class="sidebar-item active" data-target="global"># Global</div>
           </div>
           <div class="chat-content">
             <div id="chatContainer"></div>
+            <div id="reply-banner">
+              <span id="reply-banner-text">Replying...</span>
+              <span id="cancel-reply">✕</span>
+            </div>
             <div class="chat-input-area">
               <input type="text" id="chat-input-field" placeholder="Type a message..." />
               <button id="chat-send-btn">Send</button>
@@ -90,86 +128,109 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
-    // Get DOM Elements
+    // DOM References
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
     const closeBtn = document.getElementById('chat-close-btn');
     const sidebarEl = document.getElementById('chat-sidebar');
+    const dropdownEl = document.getElementById('user-select-dropdown');
     const titleEl = document.getElementById('chat-header-title');
     const inputEl = document.getElementById('chat-input-field');
     const sendBtn = document.getElementById('chat-send-btn');
     const chatContainer = document.getElementById('chatContainer');
+    const replyBanner = document.getElementById('reply-banner');
+    const replyBannerText = document.getElementById('reply-banner-text');
+    const cancelReplyBtn = document.getElementById('cancel-reply');
 
-    // State Variables
+    // App State
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
     const PUSHER_CLUSTER = 'us2';
     const currentUser = localStorage.getItem('loggedUser') || 'Anonymous';
     let activeRecipient = 'global';
+    let currentReplyTarget = null;
 
-    // Toggle Box Visibility
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
 
-    // Initialize Pusher Client
+    // Pusher Setup
     const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
 
-    // 1. Subscribe to Global Channel
     const globalChannel = pusher.subscribe('global-chat');
     globalChannel.bind('message', function(data) {
       saveMessage('global', data);
-      addUserToSidebar(data.sender);
+      addUserToSidebarAndDropdown(data.sender);
       if (activeRecipient === 'global') {
-        renderIncomingMessage(data.sender, data.message, data.created_at, false);
+        renderIncomingMessage(data);
       }
     });
 
-    // 2. Subscribe to Private DM Channel
+    globalChannel.bind('delete-message', function(data) {
+      removeMessageFromUIAndStorage('global', data.id);
+    });
+
     if (currentUser !== 'Anonymous') {
       const privateChannel = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
       privateChannel.bind('direct-message', function(data) {
         saveMessage(data.sender, data);
-        addUserToSidebar(data.sender);
+        addUserToSidebarAndDropdown(data.sender);
 
         if (activeRecipient.toLowerCase() === data.sender.toLowerCase()) {
-          renderIncomingMessage(data.sender, data.message, data.created_at, true);
-        } else {
-          triggerDMNotification(data.sender, data.message);
+          renderIncomingMessage(data);
         }
+      });
+
+      privateChannel.bind('delete-message', function(data) {
+        removeMessageFromUIAndStorage(data.sender, data.id);
       });
     }
 
-    // New DM Button Handler
-    document.getElementById('add-dm-btn').addEventListener('click', () => {
-      const targetUser = prompt("Enter the username you want to DM:");
-      if (targetUser && targetUser.trim() !== '') {
-        const cleanUser = targetUser.trim();
-        addUserToSidebar(cleanUser);
-        
-        const newSidebarItem = document.querySelector(`.sidebar-item[data-target="${cleanUser}"]`);
-        if (newSidebarItem) {
-          switchChannel(cleanUser, newSidebarItem);
+    // Fetch users from Neon Database
+    async function fetchUsersFromNeon() {
+      try {
+        const response = await fetch('/api/get-users');
+        const data = await response.json();
+        if (data.users && Array.isArray(data.users)) {
+          data.users.forEach(u => addUserToSidebarAndDropdown(u));
         }
+      } catch (err) {
+        console.error('Error fetching Neon users:', err);
+      }
+    }
+    fetchUsersFromNeon();
+
+    // Handle Dropdown DM Switch
+    dropdownEl.addEventListener('change', (e) => {
+      if (e.target.value) {
+        const item = document.querySelector(`.sidebar-item[data-target="${e.target.value}"]`);
+        if (item) switchChannel(e.target.value, item);
+        dropdownEl.selectedIndex = 0;
       }
     });
 
-    // Send Input Handler
+    // Handle Send
     const handleSend = async () => {
       const text = inputEl.value.trim();
       if (!text) return;
 
+      const censoredText = filterProfanity(text);
       const isPrivate = activeRecipient !== 'global';
+      const msgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
       const msgData = {
+        id: msgId,
         sender: currentUser,
         recipient: activeRecipient,
-        message: text,
+        message: censoredText,
+        replyTo: currentReplyTarget,
         created_at: new Date().toISOString()
       };
 
       if (isPrivate) {
         saveMessage(activeRecipient, msgData);
-        renderIncomingMessage(currentUser, text, msgData.created_at, true);
+        renderIncomingMessage(msgData);
       }
 
+      clearReplyTarget();
       inputEl.value = '';
 
       try {
@@ -180,18 +241,65 @@ document.addEventListener('DOMContentLoaded', () => {
             action: isPrivate ? 'pm' : 'live',
             sender: currentUser,
             recipient: isPrivate ? activeRecipient : null,
-            message: text
+            message: censoredText,
+            replyTo: msgData.replyTo,
+            id: msgId
           })
         });
       } catch (error) {
-        console.error('Network error sending message:', error);
+        console.error('Send error:', error);
       }
     };
 
     sendBtn.addEventListener('click', handleSend);
     inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 
-    // Storage Management
+    // Reply Logic
+    function setReplyTarget(sender, messageText) {
+      currentReplyTarget = { sender, text: messageText };
+      replyBannerText.textContent = `Replying to @${sender}: "${messageText.substring(0, 20)}..."`;
+      replyBanner.style.display = 'flex';
+      inputEl.focus();
+    }
+
+    function clearReplyTarget() {
+      currentReplyTarget = null;
+      replyBanner.style.display = 'none';
+    }
+
+    cancelReplyBtn.addEventListener('click', clearReplyTarget);
+
+    // Delete Logic
+    async function deleteMessage(msgId) {
+      removeMessageFromUIAndStorage(activeRecipient, msgId);
+
+      try {
+        await fetch('/api/send-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            id: msgId,
+            sender: currentUser,
+            recipient: activeRecipient
+          })
+        });
+      } catch (err) {
+        console.error('Delete request failed:', err);
+      }
+    }
+
+    function removeMessageFromUIAndStorage(chatKey, msgId) {
+      const el = document.querySelector(`.chat-message[data-id="${msgId}"]`);
+      if (el) el.remove();
+
+      const key = `chat_history_${chatKey.toLowerCase()}`;
+      let history = JSON.parse(localStorage.getItem(key) || '[]');
+      history = history.filter(m => m.id !== msgId);
+      localStorage.setItem(key, JSON.stringify(history));
+    }
+
+    // Storage Helpers
     function saveMessage(chatKey, msgObj) {
       const key = `chat_history_${chatKey.toLowerCase()}`;
       const existing = JSON.parse(localStorage.getItem(key) || '[]');
@@ -208,14 +316,12 @@ document.addEventListener('DOMContentLoaded', () => {
       history.forEach(msg => {
         const msgTime = new Date(msg.created_at).getTime();
         if (chatKey === 'global' && now - msgTime > 3600000) return;
-
-        const isPrivate = chatKey !== 'global';
-        renderIncomingMessage(msg.sender, msg.message, msg.created_at, isPrivate);
+        renderIncomingMessage(msg);
       });
     }
 
-    // Sidebar Items Handler
-    function addUserToSidebar(username) {
+    // Sidebar/Dropdown Rendering
+    function addUserToSidebarAndDropdown(username) {
       if (!username || username.toLowerCase() === currentUser.toLowerCase() || username === 'Anonymous' || username === 'global') return;
       
       let savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
@@ -224,24 +330,29 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('chat_sidebar_users', JSON.stringify(savedUsers));
       }
 
-      if (document.querySelector(`.sidebar-item[data-target="${username}"]`)) return;
+      if (!dropdownEl.querySelector(`option[value="${username}"]`)) {
+        const opt = document.createElement('option');
+        opt.value = username;
+        opt.textContent = username;
+        dropdownEl.appendChild(opt);
+      }
 
-      const item = document.createElement('div');
-      item.className = 'sidebar-item';
-      item.dataset.target = username;
-      item.textContent = `@ ${username}`;
-      
-      item.addEventListener('click', () => switchChannel(username, item));
-      sidebarEl.appendChild(item);
+      if (!document.querySelector(`.sidebar-item[data-target="${username}"]`)) {
+        const item = document.createElement('div');
+        item.className = 'sidebar-item';
+        item.dataset.target = username;
+        item.textContent = `@ ${username}`;
+        item.addEventListener('click', () => switchChannel(username, item));
+        sidebarEl.appendChild(item);
+      }
     }
 
     function switchChannel(target, element) {
       activeRecipient = target;
       titleEl.textContent = target === 'global' ? '# Global Chat' : `@ ${target}`;
-      
       document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
       element.classList.add('active');
-      
+      clearReplyTarget();
       loadChatHistory(target);
     }
 
@@ -249,24 +360,48 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Populate Sidebar from Saved Cache
-    const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
-    savedUsers.forEach(u => addUserToSidebar(u));
+    // Message Display Renderer
+    function renderIncomingMessage(msgData) {
+      const { id, sender, message, created_at, replyTo } = msgData;
+      const isPrivate = activeRecipient !== 'global';
 
-    // Message Rendering & Auto-Pruning
-    function renderIncomingMessage(sender, message, timestamp, isPrivate) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `chat-message ${isPrivate ? 'pm' : ''}`;
+      if (id) msgDiv.dataset.id = id;
       
-      const dateObj = timestamp ? new Date(timestamp) : new Date();
+      const dateObj = created_at ? new Date(created_at) : new Date();
       const timeFormatted = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
+
+      let replyHTML = '';
+      if (replyTo) {
+        replyHTML = `<div class="reply-quote">┌ Replying to <b>@${escapeHtml(replyTo.sender)}</b>: ${escapeHtml(replyTo.text)}</div>`;
+      }
+
+      let actionsHTML = `<span class="msg-actions">`;
+      actionsHTML += `<span class="action-btn reply-btn">Reply</span>`;
+      if (sender === currentUser && id) {
+        actionsHTML += `<span class="action-btn delete-btn">Delete</span>`;
+      }
+      actionsHTML += `</span>`;
+
       msgDiv.innerHTML = `
-        <span class="author">${escapeHtml(sender)}</span>
-        <span class="timestamp">${timeFormatted}</span>
+        ${replyHTML}
+        <div>
+          <span class="author">${escapeHtml(sender)}</span>
+          <span class="timestamp">${timeFormatted}</span>
+          ${actionsHTML}
+        </div>
         <div>${escapeHtml(message)}</div>
       `;
+
+      // Wire Actions
+      msgDiv.querySelector('.reply-btn').addEventListener('click', () => setReplyTarget(sender, message));
       
+      const deleteBtn = msgDiv.querySelector('.delete-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => deleteMessage(id));
+      }
+
       chatContainer.appendChild(msgDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -280,20 +415,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    function triggerDMNotification(sender, text) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`New DM from ${sender}`, {
-          body: text,
-          icon: '/favicon.ico'
-        });
-      }
-    }
-
     function escapeHtml(str) {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Startup Load
+    // Load initial users & global history
+    const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
+    savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
     loadChatHistory('global');
   }
 });
