@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
 
-    // Modal Events
+    // Modal Events (Instant Removal & Global Cleanup)
     function promptDeleteConfirmation(msgId) {
       pendingDeleteId = msgId;
       modalOverlay.style.display = 'flex';
@@ -209,6 +209,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     confirmDeleteBtn.addEventListener('click', () => {
       if (pendingDeleteId) {
+        // 1. Immediately remove message element from screen
+        const elementToRemove = document.querySelector(`.chat-message[data-id="${pendingDeleteId}"]`);
+        if (elementToRemove) {
+          elementToRemove.remove();
+        }
+
+        // 2. Remove from all local storage keys
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('chat_history_')) {
+            let history = JSON.parse(localStorage.getItem(key) || '[]');
+            history = history.filter(m => m.id !== pendingDeleteId);
+            localStorage.setItem(key, JSON.stringify(history));
+          }
+        });
+
+        // 3. Trigger network deletion call
         deleteMessage(pendingDeleteId);
         pendingDeleteId = null;
       }
@@ -242,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     globalChannel.bind('delete-message', function(data) {
-      removeMessageFromUIAndStorage('global', data.id);
+      removeMessageFromUIAndStorage(data.id);
     });
 
     if (currentUser !== 'Anonymous') {
@@ -257,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       privateChannel.bind('delete-message', function(data) {
-        removeMessageFromUIAndStorage(data.sender, data.id);
+        removeMessageFromUIAndStorage(data.id);
       });
     }
 
@@ -351,8 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete Handlers
     async function deleteMessage(msgId) {
-      removeMessageFromUIAndStorage(activeRecipient, msgId);
-
       try {
         await fetch('/api/send-chat', {
           method: 'POST',
@@ -369,14 +383,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    function removeMessageFromUIAndStorage(chatKey, msgId) {
+    function removeMessageFromUIAndStorage(msgId) {
       const el = document.querySelector(`.chat-message[data-id="${msgId}"]`);
       if (el) el.remove();
 
-      const key = `chat_history_${chatKey.toLowerCase()}`;
-      let history = JSON.parse(localStorage.getItem(key) || '[]');
-      history = history.filter(m => m.id !== msgId);
-      localStorage.setItem(key, JSON.stringify(history));
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('chat_history_')) {
+          let history = JSON.parse(localStorage.getItem(key) || '[]');
+          history = history.filter(m => m.id !== msgId);
+          localStorage.setItem(key, JSON.stringify(history));
+        }
+      });
     }
 
     // Storage Helpers
@@ -440,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Renderer with iPad/Mobile Touch Support & Trash Icon
+    // Message Renderer with Touch/Drag & Trash Icon
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
@@ -482,27 +499,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Encapsulated Swipe Logic
+      // Swipe Logic
       let startX = 0;
       let currentX = 0;
       let isDragging = false;
 
       const processSwipeEnd = (deltaX) => {
         msgDiv.style.transform = 'translateX(0px)';
-        
-        // Swipe Right (deltaX > 35) -> Reply
         if (deltaX > 35) {
           setReplyTarget(sender, message);
-        } 
-        // Swipe Left (deltaX < -35) -> Delete Prompt
-        else if (deltaX < -35) {
+        } else if (deltaX < -35) {
           if (isOwnMessage && id) {
             promptDeleteConfirmation(id);
           }
         }
       };
 
-      // Touch Events (iPad/iOS Supported)
+      // Touch Events
       msgDiv.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         currentX = startX;
@@ -521,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startX = 0; currentX = 0;
       });
 
-      // Mouse Drag Events
+      // Mouse Events
       msgDiv.addEventListener('mousedown', (e) => {
         startX = e.clientX;
         currentX = startX;
