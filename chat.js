@@ -1,6 +1,7 @@
-// 1. Inject Visual Styles (CSS)
+// 1. Set Tab Title dynamically
 document.title = "google.com";
 
+// 2. Inject Visual Styles (CSS)
 (function injectStyles() {
   const style = document.createElement('style');
   style.innerHTML = `
@@ -50,7 +51,7 @@ document.title = "google.com";
   document.head.appendChild(style);
 })();
 
-// 2. Inject Elements & Logic
+// 3. Inject Elements & Logic
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Pusher === 'undefined') {
     console.error('Pusher JS library is missing. Make sure to load Pusher before chat.js!');
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="chat-body">
           <div class="chat-sidebar" id="chat-sidebar">
+            <button id="add-dm-btn" style="width: 100%; margin-bottom: 8px; background: #4e5058; color: #fff; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-size: 11px; font-weight: bold;">+ New DM</button>
             <div class="sidebar-item active" data-target="global"># Global</div>
           </div>
           <div class="chat-content">
@@ -88,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
-    // Elements
+    // Get DOM Elements
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
     const closeBtn = document.getElementById('chat-close-btn');
@@ -98,12 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('chat-send-btn');
     const chatContainer = document.getElementById('chatContainer');
 
-    // App Credentials & State
+    // State Variables
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
     const PUSHER_CLUSTER = 'us2';
     const currentUser = localStorage.getItem('loggedUser') || 'Anonymous';
     let activeRecipient = 'global';
 
+    // Toggle Box Visibility
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
 
@@ -135,7 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Input Actions (NO LOCAL RENDER HERE TO PREVENT DOUBLE MESSAGES)
+    // New DM Button Handler
+    document.getElementById('add-dm-btn').addEventListener('click', () => {
+      const targetUser = prompt("Enter the username you want to DM:");
+      if (targetUser && targetUser.trim() !== '') {
+        const cleanUser = targetUser.trim();
+        addUserToSidebar(cleanUser);
+        
+        const newSidebarItem = document.querySelector(`.sidebar-item[data-target="${cleanUser}"]`);
+        if (newSidebarItem) {
+          switchChannel(cleanUser, newSidebarItem);
+        }
+      }
+    });
+
+    // Send Input Handler
     const handleSend = async () => {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -148,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
         created_at: new Date().toISOString()
       };
 
-      // If sending a DM, render and save it locally immediately
       if (isPrivate) {
         saveMessage(activeRecipient, msgData);
         renderIncomingMessage(currentUser, text, msgData.created_at, true);
@@ -156,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       inputEl.value = '';
 
-      // Send to serverless API
       try {
         await fetch('/api/send-chat', {
           method: 'POST',
@@ -176,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', handleSend);
     inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 
-    // Local Storage Helpers
+    // Storage Management
     function saveMessage(chatKey, msgObj) {
       const key = `chat_history_${chatKey.toLowerCase()}`;
       const existing = JSON.parse(localStorage.getItem(key) || '[]');
@@ -192,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       history.forEach(msg => {
         const msgTime = new Date(msg.created_at).getTime();
-        // Skip global messages older than 1 hour (3600000 ms)
         if (chatKey === 'global' && now - msgTime > 3600000) return;
 
         const isPrivate = chatKey !== 'global';
@@ -200,11 +214,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Sidebar Logic
+    // Sidebar Items Handler
     function addUserToSidebar(username) {
-      if (!username || username === currentUser || username === 'Anonymous' || username === 'global') return;
+      if (!username || username.toLowerCase() === currentUser.toLowerCase() || username === 'Anonymous' || username === 'global') return;
       
-      // Save user list permanently
       let savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
       if (!savedUsers.includes(username)) {
         savedUsers.push(username);
@@ -236,11 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Load Saved Sidebar Users on startup
+    // Populate Sidebar from Saved Cache
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebar(u));
 
-    // Message Rendering & Auto-Delete Timer
+    // Message Rendering & Auto-Pruning
     function renderIncomingMessage(sender, message, timestamp, isPrivate) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `chat-message ${isPrivate ? 'pm' : ''}`;
@@ -257,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
       chatContainer.appendChild(msgDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
 
-      // Auto-delete global messages after 1 hour from creation
       if (!isPrivate) {
         const remainingTime = 3600000 - (Date.now() - dateObj.getTime());
         if (remainingTime > 0) {
@@ -281,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Initial load
+    // Startup Load
     loadChatHistory('global');
   }
 });
