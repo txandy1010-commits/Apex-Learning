@@ -16,20 +16,7 @@ document.title="Google";(function () {
 
   // Function to check if the current user has access to the page
 // Function to verify if the user has a valid allowed role
-function checkGlobalPageAccess() {
-    // Retrieve allowed roles from local storage
-    const userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
-    
-    // Allowed tags/roles
-    const allowedRoles = ['user', 'admin', 'owner'];
-    
-    // Check if the user possesses at least one authorized role
-    const hasAccess = userRoles.some(role => allowedRoles.includes(role.toLowerCase()));
 
-    if (!hasAccess) {
-        window.location.href = 'https://www.google.com';
-    }
-}
 
 // Run immediately on page load, then check every 5 seconds
 checkGlobalPageAccess();
