@@ -14,6 +14,29 @@ document.title="Google";(function () {
     }
   }
 
+  // Function to check if the current user has access to the page
+function checkGlobalPageAccess() {
+    const loggedUser = localStorage.getItem('loggedUser');
+    const userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+
+    // Define restrictions based on page path
+    const currentPath = window.location.pathname;
+
+    if (currentPath.includes('mediaanime_3.html')) {
+        const isGuest111 = loggedUser === 'guest111';
+        const isOwner = userRoles.includes('owner');
+
+        if (!isGuest111 && !isOwner) {
+            alert('Access Denied: You do not have permission to view this page.');
+            window.location.href = 'index.html';
+        }
+    }
+}
+
+// Run the check immediately on load, then every 5,000 milliseconds (5 seconds)
+checkGlobalPageAccess();
+setInterval(checkGlobalPageAccess, 5000);
+
   function containsBadWords(text) {
     if (!bannedWordsList.length) return false;
 
