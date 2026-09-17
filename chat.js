@@ -1,558 +1,541 @@
-// 1. Set Tab Title
-document.title = "google.com";
-
-// 2. Inject Styles
-(function injectStyles() {
+(function () {
+  // 1. Inject Styles
   const style = document.createElement('style');
   style.innerHTML = `
     #chat-widget-toggle {
-      position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
-      background-color: #5865F2; color: #fff; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 99999;
-      font-size: 24px; transition: transform 0.2s ease;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background-color: #5865F2;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 9999;
+      font-size: 24px;
+      transition: transform 0.2s ease;
     }
-    #chat-widget-toggle:hover { transform: scale(1.08); }
+    #chat-widget-toggle:hover {
+      transform: scale(1.08);
+    }
+    /* Red Dot Badge */
+    #chat-widget-toggle.has-unread::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 12px;
+      height: 12px;
+      background-color: #f23f43;
+      border-radius: 50%;
+      border: 2px solid #313338;
+    }
     #chat-widget-box {
-      position: fixed; bottom: 85px; right: 20px; width: 420px; height: 520px;
-      background-color: #313338; color: #dbdee1; border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
-      flex-direction: column; overflow: hidden; z-index: 99999;
+      position: fixed;
+      bottom: 85px;
+      right: 20px;
+      width: 380px;
+      height: 500px;
+      background-color: #313338;
+      color: #dbdee1;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 9999;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    #chat-widget-box.fullscreen {
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
     }
     .chat-header {
-      background-color: #2b2d31; padding: 12px 16px; font-weight: bold;
-      display: flex; justify-content: space-between; align-items: center;
+      background-color: #2b2d31;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid #1e1f22;
     }
-    .chat-close { cursor: pointer; color: #b5bac1; font-size: 16px; }
-    .chat-close:hover { color: #fff; }
-    .chat-body { display: flex; flex: 1; overflow: hidden; }
-    .chat-sidebar {
-      width: 130px; background-color: #2b2d31; border-right: 1px solid #1e1f22;
-      padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+    .chat-header h3 {
+      margin: 0;
+      font-size: 15px;
+      color: #f2f3f5;
     }
-    .user-select-dropdown {
-      width: 100%; background: #383a40; color: #f2f3f5; border: 1px solid #1e1f22;
-      border-radius: 4px; padding: 4px; font-size: 11px; outline: none; cursor: pointer;
+    .chat-header button {
+      background: none;
+      border: none;
+      color: #b5bac1;
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 6px;
+    }
+    .chat-header button:hover {
+      color: #fff;
+    }
+    .chat-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .chat-sidebar {
+      width: 120px;
+      background-color: #2b2d31;
+      border-right: 1px solid #1e1f22;
+      padding: 8px;
+      overflow-y: auto;
     }
     .sidebar-item {
-      padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 13px;
-      color: #949ba4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #949ba4;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .sidebar-item:hover, .sidebar-item.active { background-color: #35373c; color: #f2f3f5; }
-    .chat-content { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
-    #chatContainer { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    
-    .chat-message { 
-      position: relative; font-size: 13px; line-height: 1.4; 
-      touch-action: pan-y pinch-zoom; transition: transform 0.1s ease-out;
-      user-select: none; -webkit-user-select: none; cursor: grab;
+    .sidebar-item:hover, .sidebar-item.active {
+      background-color: #35373c;
+      color: #f2f3f5;
     }
-    .chat-message:active { cursor: grabbing; }
-    .chat-message .author { font-weight: bold; color: #5865F2; margin-right: 4px; }
-    .chat-message .timestamp { font-size: 11px; color: #949ba4; margin-left: 4px; }
-    .chat-message.pm { border-left: 2px solid #f1c40f; padding-left: 6px; }
-    
-    .reply-prefix {
-      font-size: 11px; color: #949ba4; font-style: italic;
-      margin-right: 6px; display: inline-block;
+    /* Bright White Highlight for Unread DMs */
+    .sidebar-item.has-unread {
+      color: #ffffff !important;
+      font-weight: bold;
     }
-
-    #reply-banner {
-      display: none; background: #2b2d31; padding: 4px 8px; font-size: 11px;
-      color: #b5bac1; border-top: 1px solid #1e1f22; justify-content: space-between; align-items: center;
+    .chat-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #313338;
     }
-    #cancel-reply { cursor: pointer; color: #ed4245; font-weight: bold; }
-
-    .chat-input-area { padding: 10px; background-color: #383a40; display: flex; gap: 6px; }
-    .chat-input-area input { flex: 1; background: transparent; border: none; color: #f2f3f5; outline: none; }
-    .chat-input-area button { background-color: #5865F2; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-
-    #delete-modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.6); display: none; align-items: center;
-      justify-content: center; z-index: 100000;
+    .chat-messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .delete-modal {
-      background: #313338; color: #f2f3f5; padding: 20px; border-radius: 8px;
-      width: 280px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    .chat-msg {
+      font-size: 13px;
+      line-height: 1.4;
+      position: relative;
+      padding-right: 40px;
     }
-    .delete-modal p { margin: 0 0 16px 0; font-size: 14px; }
-    .delete-modal-buttons { display: flex; gap: 10px; justify-content: center; }
-    .delete-modal-buttons button {
-      padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer;
-      font-weight: bold; font-size: 13px;
+    .chat-msg .author {
+      font-weight: bold;
+      color: #5865F2;
+      margin-right: 6px;
     }
-    #confirm-delete-btn { background: #da373c; color: white; }
-    #cancel-delete-btn { background: #4e5058; color: white; }
+    .chat-msg .reply-preview {
+      font-size: 11px;
+      color: #b5bac1;
+      border-left: 2px solid #4e5058;
+      padding-left: 6px;
+      margin-bottom: 2px;
+    }
+    .chat-msg-actions {
+      position: absolute;
+      right: 0;
+      top: 0;
+      display: none;
+      gap: 4px;
+    }
+    .chat-msg:hover .chat-msg-actions {
+      display: flex;
+    }
+    .action-btn {
+      background: none;
+      border: none;
+      color: #b5bac1;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0 2px;
+    }
+    .action-btn:hover {
+      color: #f2f3f5;
+    }
+    .action-btn.delete-btn:hover {
+      color: #f23f43;
+    }
+    .reply-banner {
+      background-color: #2b2d31;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: #b5bac1;
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #1e1f22;
+    }
+    .reply-banner span {
+      cursor: pointer;
+      color: #f23f43;
+    }
+    .chat-input-area {
+      padding: 10px;
+      background-color: #383a40;
+      display: flex;
+      gap: 6px;
+    }
+    .chat-input-area input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #f2f3f5;
+      outline: none;
+      font-size: 13px;
+    }
+    .chat-input-area button {
+      background-color: #5865F2;
+      border: none;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .games-btn {
+      display: block;
+      width: calc(100% - 16px);
+      margin: 8px;
+      padding: 8px;
+      background-color: #23a55a;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 4px;
+      font-size: 12px;
+    }
   `;
   document.head.appendChild(style);
-})();
 
-// 3. Main Script Logic
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof Pusher === 'undefined') {
-    console.error('Pusher library missing! Ensure pusher.min.js is included before chat.js.');
-    return;
-  }
-
-  let BAD_WORDS_LIST = [];
-
-  // Fetch Banned Words List from Neon Endpoint
-  async function loadBadWordsFromNeon() {
-    try {
-      const response = await fetch('/api/get-bad-words');
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data.badWords)) {
-          BAD_WORDS_LIST = data.badWords;
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load bad words from Neon:', err);
-    }
-  }
-
-  function filterProfanity(text) {
-    if (!text || BAD_WORDS_LIST.length === 0) return text;
-    const pattern = new RegExp('\\b(' + BAD_WORDS_LIST.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'gi');
-    return text.replace(pattern, (match) => match[0] + '*'.repeat(match.length - 1));
-  }
-
-  function getFirstThreeWords(text) {
-    if (!text) return '';
-    const words = text.trim().split(/\s+/);
-    return words.slice(0, 3).join(' ');
-  }
-
-  // Inject UI Elements
-  if (!document.getElementById('chat-widget-toggle')) {
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = `
-      <div id="chat-widget-toggle">💬</div>
-      <div id="chat-widget-box">
-        <div class="chat-header">
-          <span id="chat-header-title"># Global Chat</span>
-          <span class="chat-close" id="chat-close-btn">✕</span>
+  // 2. Inject HTML
+  const widgetHTML = `
+    <div id="chat-widget-toggle">💬</div>
+    <div id="chat-widget-box">
+      <div class="chat-header">
+        <h3 id="chat-title"># Global Chat</h3>
+        <div>
+          <button id="change-name-btn">⚙️ Name</button>
+          <button id="chat-fullscreen-btn">⛶</button>
+          <button id="chat-close-btn">✕</button>
         </div>
-        <div class="chat-body">
-          <div class="chat-sidebar" id="chat-sidebar">
-            <select id="user-select-dropdown" class="user-select-dropdown">
-              <option value="" disabled selected>-- DM a User --</option>
-            </select>
-            <div class="sidebar-item active" data-target="global"># Global</div>
+      </div>
+      <a href="/games.html" class="games-btn">A LOT OF GAMES</a>
+      <div class="chat-body">
+        <div class="chat-sidebar" id="chat-sidebar">
+          <div class="sidebar-item active" data-target="global"># Global Chat</div>
+        </div>
+        <div class="chat-content">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="reply-banner" id="reply-banner">
+            <div id="reply-text">Replying to message...</div>
+            <span id="cancel-reply">✕</span>
           </div>
-          <div class="chat-content">
-            <div id="chatContainer"></div>
-            <div id="reply-banner">
-              <span id="reply-banner-text">Replying...</span>
-              <span id="cancel-reply">✕</span>
-            </div>
-            <div class="chat-input-area">
-              <input type="text" id="chat-input-field" placeholder="Type a message..." />
-              <button id="chat-send-btn">Send</button>
-            </div>
+          <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type a message..." />
+            <button id="chat-send">Send</button>
           </div>
         </div>
       </div>
-    `;
-    document.body.appendChild(wrapper);
+    </div>
+  `;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = widgetHTML;
+  document.body.appendChild(wrapper);
 
-    const modalWrapper = document.createElement('div');
-    modalWrapper.id = 'delete-modal-overlay';
-    modalWrapper.innerHTML = `
-      <div class="delete-modal">
-        <p>Are you sure you want to delete this message?</p>
-        <div class="delete-modal-buttons">
-          <button id="confirm-delete-btn">Yes</button>
-          <button id="cancel-delete-btn">No</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modalWrapper);
+  // 3. UI References & State Variables
+  const toggleBtn = document.getElementById('chat-widget-toggle');
+  const box = document.getElementById('chat-widget-box');
+  const closeBtn = document.getElementById('chat-close-btn');
+  const fullscreenBtn = document.getElementById('chat-fullscreen-btn');
+  const changeNameBtn = document.getElementById('change-name-btn');
+  const sendBtn = document.getElementById('chat-send');
+  const inputEl = document.getElementById('chat-input');
+  const messagesEl = document.getElementById('chat-messages');
+  const sidebarEl = document.getElementById('chat-sidebar');
+  const titleEl = document.getElementById('chat-title');
+  const replyBanner = document.getElementById('reply-banner');
+  const replyText = document.getElementById('reply-text');
+  const cancelReplyBtn = document.getElementById('cancel-reply');
 
-    const toggleBtn = document.getElementById('chat-widget-toggle');
-    const box = document.getElementById('chat-widget-box');
-    const closeBtn = document.getElementById('chat-close-btn');
-    const sidebarEl = document.getElementById('chat-sidebar');
-    const dropdownEl = document.getElementById('user-select-dropdown');
-    const titleEl = document.getElementById('chat-header-title');
-    const inputEl = document.getElementById('chat-input-field');
-    const sendBtn = document.getElementById('chat-send-btn');
-    const chatContainer = document.getElementById('chatContainer');
-    const replyBanner = document.getElementById('reply-banner');
-    const replyBannerText = document.getElementById('reply-banner-text');
-    const cancelReplyBtn = document.getElementById('cancel-reply');
+  let activeRecipient = 'global';
+  let activeReply = null;
+  
+  // Get active username from storage
+  function getLoggedUser() {
+    return localStorage.getItem('loggedUser') || localStorage.getItem('username') || 'Anonymous';
+  }
 
-    const modalOverlay = document.getElementById('delete-modal-overlay');
-    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+  // Auto-open widget for 'admin'
+  if (getLoggedUser().toLowerCase() === 'admin') {
+    box.style.display = 'flex';
+  }
+
+  // 4. LocalStorage Helpers
+  function getStorageKey(target) {
+    return `chat_history_${target.toLowerCase()}`;
+  }
+
+  function getHistory(target) {
+    return JSON.parse(localStorage.getItem(getStorageKey(target)) || '[]');
+  }
+
+  function saveMessage(target, msgObj) {
+    const history = getHistory(target);
+    history.push(msgObj);
+    localStorage.setItem(getStorageKey(target), JSON.stringify(history));
+  }
+
+  function removeMessageFromStorage(target, msgId) {
+    const history = getHistory(target).filter(m => m.id !== msgId);
+    localStorage.setItem(getStorageKey(target), JSON.stringify(history));
+  }
+
+  // 5. Sidebar & UI Logic
+  function addUserToSidebar(username) {
+    if (!username || username === 'Anonymous' || username.toLowerCase() === getLoggedUser().toLowerCase()) return;
+    if (document.querySelector(`.sidebar-item[data-target="${username}"]`)) return;
+
+    const item = document.createElement('div');
+    item.className = 'sidebar-item';
+    item.dataset.target = username;
+    item.textContent = '@ ' + username;
+    item.addEventListener('click', () => switchChannel(username, item));
+    sidebarEl.appendChild(item);
+  }
+
+  function switchChannel(target, element) {
+    activeRecipient = target;
+    titleEl.textContent = target === 'global' ? '# Global Chat' : `@ ${target}`;
+
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
     
-    let pendingDeleteData = null;
+    // Clear bright white unread style on click
+    element.classList.remove('has-unread');
 
-    const currentUser = localStorage.getItem('loggedUser') || localStorage.getItem('username') || localStorage.getItem('user') || 'Anonymous';
-    const PUSHER_KEY = 'c33c47677ef3d8d8a413';
-    const PUSHER_CLUSTER = 'us2';
-    let activeRecipient = 'global';
-    let currentReplyTarget = null;
+    clearReplyTarget();
+    renderChatHistory(target);
+  }
 
-    toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
-    closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
+  function renderChatHistory(target) {
+    messagesEl.innerHTML = '';
+    const history = getHistory(target);
+    history.forEach(msg => appendMessageUI(msg));
+  }
 
-    function promptDeleteConfirmation(msgId, msgDiv) {
-      pendingDeleteData = { id: msgId, element: msgDiv };
-      modalOverlay.style.display = 'flex';
+  function appendMessageUI(msgData) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-msg';
+    msgDiv.dataset.id = msgData.id;
+
+    let replyMarkup = '';
+    if (msgData.replyTo) {
+      replyMarkup = `<div class="reply-preview">Replying to ${escapeHTML(msgData.replyTo.sender)}: "${escapeHTML(msgData.replyTo.message)}"</div>`;
     }
 
-    confirmDeleteBtn.addEventListener('click', () => {
-      if (pendingDeleteData) {
-        const { id, element } = pendingDeleteData;
-        if (element && element.parentNode) element.remove();
-        if (id) {
-          removeMessageFromUIAndStorage(id);
-          deleteMessage(id);
-        }
-        pendingDeleteData = null;
-      }
-      modalOverlay.style.display = 'none';
-    });
+    const currentUser = getLoggedUser();
+    const canDelete = msgData.sender.toLowerCase() === currentUser.toLowerCase() || currentUser.toLowerCase() === 'admin';
 
-    cancelDeleteBtn.addEventListener('click', () => {
-      pendingDeleteData = null;
-      modalOverlay.style.display = 'none';
-    });
+    msgDiv.innerHTML = `
+      ${replyMarkup}
+      <div>
+        <span class="author">${escapeHTML(msgData.sender)}:</span>
+        <span>${escapeHTML(msgData.message)}</span>
+      </div>
+      <div class="chat-msg-actions">
+        <button class="action-btn reply-btn" title="Reply">↩</button>
+        ${canDelete ? '<button class="action-btn delete-btn" title="Delete">🗑</button>' : ''}
+      </div>
+    `;
 
-    const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-
-    const globalChannel = pusher.subscribe('global-chat');
-    globalChannel.bind('message', function(data) {
-      saveMessage('global', data);
-      addUserToSidebarAndDropdown(data.sender);
-      if (activeRecipient === 'global') {
-        renderIncomingMessage(data);
-      }
-    });
-
-    globalChannel.bind('delete-message', function(data) {
-      removeMessageFromUIAndStorage(data.id);
-    });
-
-    if (currentUser !== 'Anonymous') {
-      const privateChannel = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
-      privateChannel.bind('direct-message', function(data) {
-        saveMessage(data.sender, data);
-        addUserToSidebarAndDropdown(data.sender);
-
-        if (activeRecipient.toLowerCase() === data.sender.toLowerCase()) {
-          renderIncomingMessage(data);
-        }
-      });
-
-      privateChannel.bind('delete-message', function(data) {
-        removeMessageFromUIAndStorage(data.id);
-      });
-    }
-
-    // Load registered users from Neon Database
-    async function loadUsersFromNeon() {
-      try {
-        const response = await fetch('/api/get-users');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.users && Array.isArray(data.users)) {
-            data.users.forEach(u => addUserToSidebarAndDropdown(u));
-          }
-        }
-      } catch (err) {
-        console.error('Neon user load failed:', err);
-      }
-    }
-
-    dropdownEl.addEventListener('change', (e) => {
-      if (e.target.value) {
-        const item = document.querySelector(`.sidebar-item[data-target="${e.target.value}"]`);
-        if (item) switchChannel(e.target.value, item);
-        dropdownEl.selectedIndex = 0;
-      }
-    });
-
-    const handleSend = async () => {
-      const text = inputEl.value.trim();
-      if (!text) return;
-
-      const censoredText = filterProfanity(text);
-      const isPrivate = activeRecipient !== 'global';
-      const msgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-
-      const msgData = {
-        id: msgId,
-        sender: currentUser,
-        recipient: activeRecipient,
-        message: censoredText,
-        replyTo: currentReplyTarget,
-        created_at: new Date().toISOString()
-      };
-
-      if (isPrivate) {
-        saveMessage(activeRecipient, msgData);
-        renderIncomingMessage(msgData);
-      }
-
-      clearReplyTarget();
-      inputEl.value = '';
-
-      try {
-        await fetch('/api/send-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: isPrivate ? 'pm' : 'live',
-            sender: currentUser,
-            recipient: isPrivate ? activeRecipient : null,
-            message: censoredText,
-            replyTo: msgData.replyTo,
-            id: msgId
-          })
-        });
-      } catch (error) {
-        console.error('Send error:', error);
-      }
-    };
-
-    sendBtn.addEventListener('click', handleSend);
-    inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
-
-    function setReplyTarget(sender, messageText) {
-      currentReplyTarget = { sender, text: messageText };
-      const shortText = getFirstThreeWords(messageText);
-      replyBannerText.textContent = `Replying to @${sender}: "${shortText}..."`;
+    // Handle Reply Button
+    msgDiv.querySelector('.reply-btn').addEventListener('click', () => {
+      activeReply = { id: msgData.id, sender: msgData.sender, message: msgData.message };
+      replyText.textContent = `Replying to ${msgData.sender}...`;
       replyBanner.style.display = 'flex';
       inputEl.focus();
-    }
-
-    function clearReplyTarget() {
-      currentReplyTarget = null;
-      replyBanner.style.display = 'none';
-    }
-
-    cancelReplyBtn.addEventListener('click', clearReplyTarget);
-
-    async function deleteMessage(msgId) {
-      try {
-        await fetch('/api/send-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'delete',
-            id: msgId,
-            sender: currentUser,
-            recipient: activeRecipient
-          })
-        });
-      } catch (err) {
-        console.error('Delete request failed:', err);
-      }
-    }
-
-    function removeMessageFromUIAndStorage(msgId) {
-      const el = document.querySelector(`.chat-message[data-id="${msgId}"]`);
-      if (el) el.remove();
-
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('chat_history_')) {
-          let history = JSON.parse(localStorage.getItem(key) || '[]');
-          history = history.filter(m => m.id !== msgId);
-          localStorage.setItem(key, JSON.stringify(history));
-        }
-      });
-    }
-
-    function saveMessage(chatKey, msgObj) {
-      const key = `chat_history_${chatKey.toLowerCase()}`;
-      const existing = JSON.parse(localStorage.getItem(key) || '[]');
-      existing.push(msgObj);
-      localStorage.setItem(key, JSON.stringify(existing));
-    }
-
-    function loadChatHistory(chatKey) {
-      chatContainer.innerHTML = '';
-      const key = `chat_history_${chatKey.toLowerCase()}`;
-      const history = JSON.parse(localStorage.getItem(key) || '[]');
-      const now = Date.now();
-
-      history.forEach(msg => {
-        const msgTime = new Date(msg.created_at).getTime();
-        if (chatKey === 'global' && now - msgTime > 3600000) return;
-        renderIncomingMessage(msg);
-      });
-    }
-
-    function addUserToSidebarAndDropdown(username) {
-      if (!username || username.toLowerCase() === currentUser.toLowerCase() || username === 'Anonymous' || username === 'global') return;
-      
-      let savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
-      if (!savedUsers.includes(username)) {
-        savedUsers.push(username);
-        localStorage.setItem('chat_sidebar_users', JSON.stringify(savedUsers));
-      }
-
-      if (!dropdownEl.querySelector(`option[value="${username}"]`)) {
-        const opt = document.createElement('option');
-        opt.value = username;
-        opt.textContent = username;
-        dropdownEl.appendChild(opt);
-      }
-
-      if (!document.querySelector(`.sidebar-item[data-target="${username}"]`)) {
-        const item = document.createElement('div');
-        item.className = 'sidebar-item';
-        item.dataset.target = username;
-        item.textContent = `@ ${username}`;
-        item.addEventListener('click', () => switchChannel(username, item));
-        sidebarEl.appendChild(item);
-      }
-    }
-
-    function switchChannel(target, element) {
-      activeRecipient = target;
-      titleEl.textContent = target === 'global' ? '# Global Chat' : `@ ${target}`;
-      document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-      element.classList.add('active');
-      clearReplyTarget();
-      loadChatHistory(target);
-    }
-
-    document.querySelector('.sidebar-item[data-target="global"]').addEventListener('click', function() {
-      switchChannel('global', this);
     });
 
-    function renderIncomingMessage(msgData) {
-      const { id, sender, message, created_at, replyTo } = msgData;
-      const isPrivate = activeRecipient !== 'global';
-      const isOwnMessage = sender.toLowerCase() === currentUser.toLowerCase();
+    // Handle Delete Button
+    if (canDelete) {
+      msgDiv.querySelector('.delete-btn').addEventListener('click', async () => {
+        if (confirm('Delete this message?')) {
+          msgDiv.remove();
+          removeMessageFromStorage(activeRecipient, msgData.id);
 
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `chat-message ${isPrivate ? 'pm' : ''}`;
-      if (id) msgDiv.dataset.id = id;
-      
-      const dateObj = created_at ? new Date(created_at) : new Date();
-      const timeFormatted = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      let replyPrefixHTML = '';
-      if (replyTo && replyTo.text) {
-        const firstThree = getFirstThreeWords(replyTo.text);
-        replyPrefixHTML = `<span class="reply-prefix">replying to "${escapeHtml(firstThree)}..."</span>`;
-      }
-
-      msgDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-align: center;">
-          <div>
-            ${replyPrefixHTML}
-            <span class="author">${escapeHtml(sender)}</span>
-            <span class="timestamp">${timeFormatted}</span>
-          </div>
-          ${isOwnMessage ? `<span class="delete-btn" style="cursor: pointer; opacity: 0.6; padding: 0 4px;" title="Delete Message">🗑️</span>` : ''}
-        </div>
-        <div>${escapeHtml(message)}</div>
-      `;
-
-      if (isOwnMessage) {
-        const deleteBtn = msgDiv.querySelector('.delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            promptDeleteConfirmation(id, msgDiv);
-          });
-        }
-      }
-
-      let startX = 0;
-      let currentX = 0;
-      let isDragging = false;
-
-      const processSwipeEnd = (deltaX) => {
-        msgDiv.style.transform = 'translateX(0px)';
-        if (deltaX > 35) {
-          setReplyTarget(sender, message);
-        } else if (deltaX < -35) {
-          if (isOwnMessage) {
-            promptDeleteConfirmation(id, msgDiv);
+          try {
+            await fetch('/api/send-chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'delete', id: msgData.id, sender: currentUser, recipient: activeRecipient })
+            });
+          } catch (err) {
+            console.error('Failed to dispatch delete request:', err);
           }
         }
-      };
-
-      msgDiv.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        currentX = startX;
-      }, { passive: true });
-
-      msgDiv.addEventListener('touchmove', (e) => {
-        currentX = e.touches[0].clientX;
-        const diffX = currentX - startX;
-        if (Math.abs(diffX) < 100) {
-          msgDiv.style.transform = `translateX(${diffX}px)`;
-        }
-      }, { passive: true });
-
-      msgDiv.addEventListener('touchend', () => {
-        processSwipeEnd(currentX - startX);
-        startX = 0; currentX = 0;
       });
+    }
 
-      msgDiv.addEventListener('mousedown', (e) => {
-        startX = e.clientX;
-        currentX = startX;
-        isDragging = true;
-      });
+    messagesEl.appendChild(msgDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 
-      const onMouseMove = (e) => {
-        if (!isDragging) return;
-        currentX = e.clientX;
-        const diffX = currentX - startX;
-        if (Math.abs(diffX) < 100) {
-          msgDiv.style.transform = `translateX(${diffX}px)`;
-        }
-      };
+  function clearReplyTarget() {
+    activeReply = null;
+    replyBanner.style.display = 'none';
+  }
 
-      const onMouseUp = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
-        processSwipeEnd(currentX - startX);
-        startX = 0; currentX = 0;
-      };
+  cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
-      msgDiv.addEventListener('mousedown', () => {
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-      });
+  // 6. Pusher Subscriptions
+  const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_PUSHER_CLUSTER' });
 
-      chatContainer.appendChild(msgDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+  // Global Channel
+  const globalChan = pusher.subscribe('global-chat');
+  globalChan.bind('message', function(data) {
+    saveMessage('global', data);
+    addUserToSidebar(data.sender);
 
-      if (!isPrivate) {
-        const remainingTime = 3600000 - (Date.now() - dateObj.getTime());
-        if (remainingTime > 0) {
-          setTimeout(() => { if (chatContainer.contains(msgDiv)) msgDiv.remove(); }, remainingTime);
-        } else {
-          msgDiv.remove();
+    if (activeRecipient === 'global') {
+      appendMessageUI(data);
+    } else {
+      if (box.style.display !== 'flex') toggleBtn.classList.add('has-unread');
+    }
+  });
+
+  globalChan.bind('delete-message', function(data) {
+    removeMessageFromStorage('global', data.id);
+    const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
+    if (existing) existing.remove();
+  });
+
+  // Private DM Channel
+  const currentUser = getLoggedUser();
+  if (currentUser !== 'Anonymous') {
+    const userChan = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
+    
+    userChan.bind('direct-message', function(data) {
+      saveMessage(data.sender, data);
+      addUserToSidebar(data.sender);
+
+      const isChatOpen = box.style.display === 'flex';
+      const isTargetActive = activeRecipient.toLowerCase() === data.sender.toLowerCase();
+
+      if (isChatOpen && isTargetActive) {
+        appendMessageUI(data);
+      } else {
+        if (!isChatOpen) toggleBtn.classList.add('has-unread');
+        
+        if (!isTargetActive) {
+          const userItem = document.querySelector(`.sidebar-item[data-target="${data.sender}"]`);
+          if (userItem) userItem.classList.add('has-unread');
         }
       }
-    }
+    });
 
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    // Startup Execution
-    const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
-    savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
-    
-    loadBadWordsFromNeon();
-    loadUsersFromNeon();
-    loadChatHistory('global');
+    userChan.bind('delete-message', function(data) {
+      // Clean up deletion in whichever conversation store holds it
+      removeMessageFromStorage(activeRecipient, data.id);
+      const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
+      if (existing) existing.remove();
+    });
   }
-});
+
+  // 7. Network Requests
+  async function fetchUsersFromNeon() {
+    try {
+      const res = await fetch('/api/get-users');
+      const data = await res.json();
+      if (data.users && Array.isArray(data.users)) {
+        data.users.forEach(u => addUserToSidebar(u));
+      }
+    } catch (err) {
+      console.error('Failed to load registered Neon users:', err);
+    }
+  }
+
+  async function handleSend() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    const msgId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+    const sender = getLoggedUser();
+
+    const payload = {
+      id: msgId,
+      action: activeRecipient === 'global' ? 'global' : 'pm',
+      sender: sender,
+      recipient: activeRecipient,
+      message: text,
+      replyTo: activeReply
+    };
+
+    appendMessageUI(payload);
+    saveMessage(activeRecipient, payload);
+
+    inputEl.value = '';
+    clearReplyTarget();
+
+    try {
+      await fetch('/api/send-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  }
+
+  // 8. Event Listeners
+  toggleBtn.addEventListener('click', () => {
+    const isOpening = box.style.display !== 'flex';
+    box.style.display = isOpening ? 'flex' : 'none';
+    if (isOpening) toggleBtn.classList.remove('has-unread');
+  });
+
+  closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
+  fullscreenBtn.addEventListener('click', () => { box.classList.toggle('fullscreen'); });
+
+  changeNameBtn.addEventListener('click', () => {
+    const name = prompt('Enter your username:', getLoggedUser());
+    if (name && name.trim()) {
+      localStorage.setItem('loggedUser', name.trim());
+      location.reload();
+    }
+  });
+
+  sendBtn.addEventListener('click', handleSend);
+  inputEl.addEventListener('keypress', e => { if (e.key === 'Enter') handleSend(); });
+
+  // Add default global listener
+  document.querySelector('.sidebar-item[data-target="global"]').addEventListener('click', function() {
+    switchChannel('global', this);
+  });
+
+  function escapeHTML(str) {
+    return (str || '').replace(/[&<>'"]/g, 
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+  }
+
+  // Initialization
+  renderChatHistory('global');
+  fetchUsersFromNeon();
+})();
