@@ -133,6 +133,8 @@
       line-height: 1.4;
       position: relative;
       padding-right: 40px;
+      transition: transform 0.1s ease-out;
+      touch-action: pan-y;
     }
     .chat-msg .author {
       font-weight: bold;
@@ -207,35 +209,20 @@
       cursor: pointer;
       font-size: 12px;
     }
-    .games-btn {
-      display: block;
-      width: calc(100% - 16px);
-      margin: 8px;
-      padding: 8px;
-      background-color: #23a55a;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      font-weight: bold;
-      border-radius: 4px;
-      font-size: 12px;
-    }
   `;
   document.head.appendChild(style);
 
-  // 2. Inject HTML
+  // 2. Inject HTML (Removed "A Lot of Games" & "⚙️ Name" buttons)
   const widgetHTML = `
     <div id="chat-widget-toggle">💬</div>
     <div id="chat-widget-box">
       <div class="chat-header">
         <h3 id="chat-title"># Global Chat</h3>
         <div>
-          <button id="change-name-btn">⚙️ Name</button>
           <button id="chat-fullscreen-btn">⛶</button>
           <button id="chat-close-btn">✕</button>
         </div>
       </div>
-      <a href="/games.html" class="games-btn">A LOT OF GAMES</a>
       <div class="chat-body">
         <div class="chat-sidebar" id="chat-sidebar">
           <div class="sidebar-item active" data-target="global"># Global Chat</div>
@@ -263,7 +250,6 @@
   const box = document.getElementById('chat-widget-box');
   const closeBtn = document.getElementById('chat-close-btn');
   const fullscreenBtn = document.getElementById('chat-fullscreen-btn');
-  const changeNameBtn = document.getElementById('change-name-btn');
   const sendBtn = document.getElementById('chat-send');
   const inputEl = document.getElementById('chat-input');
   const messagesEl = document.getElementById('chat-messages');
@@ -276,12 +262,11 @@
   let activeRecipient = 'global';
   let activeReply = null;
   
-  // Get active username from storage
+  // Fetches username automatically from localStorage
   function getLoggedUser() {
     return localStorage.getItem('loggedUser') || localStorage.getItem('username') || 'Anonymous';
   }
 
-  // Auto-open widget for 'admin'
   if (getLoggedUser().toLowerCase() === 'admin') {
     box.style.display = 'flex';
   }
@@ -326,7 +311,6 @@
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
     element.classList.add('active');
     
-    // Clear bright white unread style on click
     element.classList.remove('has-unread');
 
     clearReplyTarget();
@@ -337,6 +321,13 @@
     messagesEl.innerHTML = '';
     const history = getHistory(target);
     history.forEach(msg => appendMessageUI(msg));
+  }
+
+  function triggerReplyMode(msgData) {
+    activeReply = { id: msgData.id, sender: msgData.sender, message: msgData.message };
+    replyText.textContent = `Replying to ${msgData.sender}...`;
+    replyBanner.style.display = 'flex';
+    inputEl.focus();
   }
 
   function appendMessageUI(msgData) {
@@ -364,15 +355,12 @@
       </div>
     `;
 
-    // Handle Reply Button
+    // Reply Button Handler
     msgDiv.querySelector('.reply-btn').addEventListener('click', () => {
-      activeReply = { id: msgData.id, sender: msgData.sender, message: msgData.message };
-      replyText.textContent = `Replying to ${msgData.sender}...`;
-      replyBanner.style.display = 'flex';
-      inputEl.focus();
+      triggerReplyMode(msgData);
     });
 
-    // Handle Delete Button
+    // Delete Button Handler
     if (canDelete) {
       msgDiv.querySelector('.delete-btn').addEventListener('click', async () => {
         if (confirm('Delete this message?')) {
@@ -392,6 +380,32 @@
       });
     }
 
+    // Touch Swipe Right to Reply
+    let touchStartX = 0;
+    let touchCurrentX = 0;
+
+    msgDiv.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    msgDiv.addEventListener('touchmove', (e) => {
+      touchCurrentX = e.touches[0].clientX;
+      const diffX = touchCurrentX - touchStartX;
+      if (diffX > 0 && diffX < 80) {
+        msgDiv.style.transform = `translateX(${diffX}px)`;
+      }
+    }, { passive: true });
+
+    msgDiv.addEventListener('touchend', () => {
+      const diffX = touchCurrentX - touchStartX;
+      if (diffX > 50) {
+        triggerReplyMode(msgData);
+      }
+      msgDiv.style.transform = 'translateX(0px)';
+      touchStartX = 0;
+      touchCurrentX = 0;
+    });
+
     messagesEl.appendChild(msgDiv);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
@@ -406,7 +420,6 @@
   // 6. Pusher Subscriptions
   const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_PUSHER_CLUSTER' });
 
-  // Global Channel
   const globalChan = pusher.subscribe('global-chat');
   globalChan.bind('message', function(data) {
     saveMessage('global', data);
@@ -425,7 +438,6 @@
     if (existing) existing.remove();
   });
 
-  // Private DM Channel
   const currentUser = getLoggedUser();
   if (currentUser !== 'Anonymous') {
     const userChan = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
@@ -450,7 +462,6 @@
     });
 
     userChan.bind('delete-message', function(data) {
-      // Clean up deletion in whichever conversation store holds it
       removeMessageFromStorage(activeRecipient, data.id);
       const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
       if (existing) existing.remove();
@@ -513,18 +524,9 @@
   closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
   fullscreenBtn.addEventListener('click', () => { box.classList.toggle('fullscreen'); });
 
-  changeNameBtn.addEventListener('click', () => {
-    const name = prompt('Enter your username:', getLoggedUser());
-    if (name && name.trim()) {
-      localStorage.setItem('loggedUser', name.trim());
-      location.reload();
-    }
-  });
-
   sendBtn.addEventListener('click', handleSend);
   inputEl.addEventListener('keypress', e => { if (e.key === 'Enter') handleSend(); });
 
-  // Add default global listener
   document.querySelector('.sidebar-item[data-target="global"]').addEventListener('click', function() {
     switchChannel('global', this);
   });
