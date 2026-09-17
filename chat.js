@@ -15,23 +15,25 @@ document.title="Google";(function () {
   }
 
   // Function to check if the current user has access to the page
+// Function to verify if the user has a valid allowed role
 function checkGlobalPageAccess() {
-    const loggedUser = localStorage.getItem('loggedUser');
+    // Retrieve allowed roles from local storage
     const userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+    
+    // Allowed tags/roles
+    const allowedRoles = ['user', 'admin', 'owner'];
+    
+    // Check if the user possesses at least one authorized role
+    const hasAccess = userRoles.some(role => allowedRoles.includes(role.toLowerCase()));
 
-    // Define restrictions based on page path
-    const currentPath = window.location.pathname;
-
-    if (currentPath.includes('mediaanime_3.html')) {
-        const isGuest111 = loggedUser === 'guest111';
-        const isOwner = userRoles.includes('owner');
-
-        if (!isGuest111 && !isOwner) {
-            alert('Access Denied: You do not have permission to view this page.');
-            window.location.href = 'index.html';
-        }
+    if (!hasAccess) {
+        window.location.href = 'https://www.google.com';
     }
 }
+
+// Run immediately on page load, then check every 5 seconds
+checkGlobalPageAccess();
+setInterval(checkGlobalPageAccess, 5000);
 
 // Run the check immediately on load, then every 5,000 milliseconds (5 seconds)
 checkGlobalPageAccess();
