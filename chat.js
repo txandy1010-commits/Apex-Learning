@@ -1,11 +1,7 @@
-<!-- Pusher Library -->
-<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
-
-<script>
 // 1. Set Tab Title
 document.title = "google.com";
 
-// 2. Inject CSS Styles
+// 2. Inject Styles
 (function injectStyles() {
   const style = document.createElement('style');
   style.innerHTML = `
@@ -13,7 +9,7 @@ document.title = "google.com";
       position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
       background-color: #5865F2; color: #fff; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 99999;
       font-size: 24px; transition: transform 0.2s ease;
     }
     #chat-widget-toggle:hover { transform: scale(1.08); }
@@ -21,7 +17,7 @@ document.title = "google.com";
       position: fixed; bottom: 85px; right: 20px; width: 420px; height: 520px;
       background-color: #313338; color: #dbdee1; border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
-      flex-direction: column; overflow: hidden; z-index: 9999;
+      flex-direction: column; overflow: hidden; z-index: 99999;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     .chat-header {
@@ -49,14 +45,9 @@ document.title = "google.com";
     #chatContainer { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     
     .chat-message { 
-      position: relative; 
-      font-size: 13px; 
-      line-height: 1.4; 
-      touch-action: pan-y pinch-zoom;
-      transition: transform 0.1s ease-out;
-      user-select: none;
-      -webkit-user-select: none;
-      cursor: grab;
+      position: relative; font-size: 13px; line-height: 1.4; 
+      touch-action: pan-y pinch-zoom; transition: transform 0.1s ease-out;
+      user-select: none; -webkit-user-select: none; cursor: grab;
     }
     .chat-message:active { cursor: grabbing; }
     .chat-message .author { font-weight: bold; color: #5865F2; margin-right: 4px; }
@@ -64,11 +55,8 @@ document.title = "google.com";
     .chat-message.pm { border-left: 2px solid #f1c40f; padding-left: 6px; }
     
     .reply-prefix {
-      font-size: 11px;
-      color: #949ba4;
-      font-style: italic;
-      margin-right: 6px;
-      display: inline-block;
+      font-size: 11px; color: #949ba4; font-style: italic;
+      margin-right: 6px; display: inline-block;
     }
 
     #reply-banner {
@@ -81,11 +69,10 @@ document.title = "google.com";
     .chat-input-area input { flex: 1; background: transparent; border: none; color: #f2f3f5; outline: none; }
     .chat-input-area button { background-color: #5865F2; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
-    /* Delete Modal Styles */
     #delete-modal-overlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0,0,0,0.6); display: none; align-items: center;
-      justify-content: center; z-index: 10000;
+      justify-content: center; z-index: 100000;
     }
     .delete-modal {
       background: #313338; color: #f2f3f5; padding: 20px; border-radius: 8px;
@@ -104,21 +91,33 @@ document.title = "google.com";
   document.head.appendChild(style);
 })();
 
-// 3. Main Chat Script
+// 3. Main Script Logic
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Pusher === 'undefined') {
-    console.error('Pusher library missing! Make sure to include pusher.min.js');
+    console.error('Pusher library missing! Ensure pusher.min.js is included before chat.js.');
     return;
   }
 
-  const BAD_WORDS_LIST = [
-    'fuck', 'shit', 'bitch', 'ass', 'asshole', 'bastard', 'crap', 'dammit', 
-    'damn', 'dick', 'pussy', 'slut', 'whore', 'cock', 'cunt', 'nigger', 'faggot'
-  ];
+  let BAD_WORDS_LIST = [];
+
+  // Fetch Banned Words List from Neon Endpoint
+  async function loadBadWordsFromNeon() {
+    try {
+      const response = await fetch('/api/get-bad-words');
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data.badWords)) {
+          BAD_WORDS_LIST = data.badWords;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load bad words from Neon:', err);
+    }
+  }
 
   function filterProfanity(text) {
-    if (!text) return '';
-    const pattern = new RegExp('\\b(' + BAD_WORDS_LIST.join('|') + ')\\b', 'gi');
+    if (!text || BAD_WORDS_LIST.length === 0) return text;
+    const pattern = new RegExp('\\b(' + BAD_WORDS_LIST.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'gi');
     return text.replace(pattern, (match) => match[0] + '*'.repeat(match.length - 1));
   }
 
@@ -128,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return words.slice(0, 3).join(' ');
   }
 
+  // Inject UI Elements
   if (!document.getElementById('chat-widget-toggle')) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
@@ -209,16 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmDeleteBtn.addEventListener('click', () => {
       if (pendingDeleteData) {
         const { id, element } = pendingDeleteData;
-
-        if (element && element.parentNode) {
-          element.remove();
-        }
-
+        if (element && element.parentNode) element.remove();
         if (id) {
           removeMessageFromUIAndStorage(id);
           deleteMessage(id);
         }
-
         pendingDeleteData = null;
       }
       modalOverlay.style.display = 'none';
@@ -260,6 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Load registered users from Neon Database
     async function loadUsersFromNeon() {
       try {
         const response = await fetch('/api/get-users');
@@ -270,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       } catch (err) {
-        console.error('Neon fetch failed:', err);
+        console.error('Neon user load failed:', err);
       }
     }
 
@@ -451,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       msgDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-align: center;">
           <div>
             ${replyPrefixHTML}
             <span class="author">${escapeHtml(sender)}</span>
@@ -551,11 +547,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Initialize state & load users
+    // Startup Execution
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
+    
+    loadBadWordsFromNeon();
     loadUsersFromNeon();
     loadChatHistory('global');
   }
 });
-</script>
