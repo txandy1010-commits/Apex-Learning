@@ -63,10 +63,6 @@ document.title = "google.com";
       margin-right: 6px;
       display: inline-block;
     }
-    
-    .msg-actions { display: inline-block; margin-left: 8px; font-size: 11px; }
-    .action-btn { color: #949ba4; cursor: pointer; margin-right: 6px; text-decoration: underline; }
-    .action-btn.delete-btn:hover { color: #ed4245; }
 
     #reply-banner {
       display: none; background: #2b2d31; padding: 4px 8px; font-size: 11px;
@@ -77,6 +73,26 @@ document.title = "google.com";
     .chat-input-area { padding: 10px; background-color: #383a40; display: flex; gap: 6px; }
     .chat-input-area input { flex: 1; background: transparent; border: none; color: #f2f3f5; outline: none; }
     .chat-input-area button { background-color: #5865F2; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+
+    /* Delete Confirmation Modal */
+    #delete-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.6); display: none; align-items: center;
+      justify-content: center; z-index: 10000;
+    }
+    .delete-modal {
+      background: #313338; color: #f2f3f5; padding: 20px; border-radius: 8px;
+      width: 280px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    .delete-modal p { margin: 0 0 16px 0; font-size: 14px; }
+    .delete-modal-buttons { display: flex; gap: 10px; justify-content: center; }
+    .delete-modal-buttons button {
+      padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer;
+      font-weight: bold; font-size: 13px;
+    }
+    #confirm-delete-btn { background: #da373c; color: white; }
+    #cancel-delete-btn { background: #4e5058; color: white; }
   `;
   document.head.appendChild(style);
 })();
@@ -88,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Common profane words array (Add extra words to this list as needed)
+  // Bad words array
   const BAD_WORDS_LIST = [
     'fuck', 'shit', 'bitch', 'ass', 'asshole', 'bastard', 'crap', 'dammit', 
     'damn', 'dick', 'pussy', 'slut', 'whore', 'cock', 'cunt', 'nigger', 'faggot'
@@ -96,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function filterProfanity(text) {
     if (!text) return '';
-    // Regex matching full words case-insensitively
     const pattern = new RegExp('\\b(' + BAD_WORDS_LIST.join('|') + ')\\b', 'gi');
     return text.replace(pattern, (match) => match[0] + '*'.repeat(match.length - 1));
   }
@@ -140,6 +155,20 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
+    // Inject Delete Confirmation Modal
+    const modalWrapper = document.createElement('div');
+    modalWrapper.id = 'delete-modal-overlay';
+    modalWrapper.innerHTML = `
+      <div class="delete-modal">
+        <p>Are you sure you want to delete this message?</p>
+        <div class="delete-modal-buttons">
+          <button id="confirm-delete-btn">Yes</button>
+          <button id="cancel-delete-btn">No</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalWrapper);
+
     // References
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
@@ -154,6 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const replyBannerText = document.getElementById('reply-banner-text');
     const cancelReplyBtn = document.getElementById('cancel-reply');
 
+    const modalOverlay = document.getElementById('delete-modal-overlay');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    let pendingDeleteId = null;
+
     // App State
     const currentUser = localStorage.getItem('loggedUser') || localStorage.getItem('username') || localStorage.getItem('user') || 'Anonymous';
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
@@ -164,7 +198,26 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
 
-    // Local Cross-Tab Presence Sync
+    // Modal Events
+    function promptDeleteConfirmation(msgId) {
+      pendingDeleteId = msgId;
+      modalOverlay.style.display = 'flex';
+    }
+
+    confirmDeleteBtn.addEventListener('click', () => {
+      if (pendingDeleteId) {
+        deleteMessage(pendingDeleteId);
+        pendingDeleteId = null;
+      }
+      modalOverlay.style.display = 'none';
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => {
+      pendingDeleteId = null;
+      modalOverlay.style.display = 'none';
+    });
+
+    // Cross-Tab Presence Sync
     const presenceChannel = new BroadcastChannel('chat_presence');
     presenceChannel.postMessage({ type: 'ANNOUNCE_USER', user: currentUser });
     presenceChannel.onmessage = (e) => {
@@ -384,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Renderer
+    // Message Renderer with Dual Swipe (Right = Reply, Left = Delete)
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
@@ -399,12 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let replyPrefixHTML = '';
       if (replyTo && replyTo.text) {
         const firstThree = getFirstThreeWords(replyTo.text);
-        replyPrefixHTML = `<span class="reply-prefix">replying to the message "${escapeHtml(firstThree)}..."</span>`;
-      }
-
-      let actionsHTML = '';
-      if (sender === currentUser && id) {
-        actionsHTML = `<span class="msg-actions"><span class="action-btn delete-btn">Delete</span></span>`;
+        replyPrefixHTML = `<span class="reply-prefix">replying to "${escapeHtml(firstThree)}..."</span>`;
       }
 
       msgDiv.innerHTML = `
@@ -412,20 +460,34 @@ document.addEventListener('DOMContentLoaded', () => {
           ${replyPrefixHTML}
           <span class="author">${escapeHtml(sender)}</span>
           <span class="timestamp">${timeFormatted}</span>
-          ${actionsHTML}
         </div>
         <div>${escapeHtml(message)}</div>
       `;
 
-      const deleteBtn = msgDiv.querySelector('.delete-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => deleteMessage(id));
-      }
-
-      // Touch & Mouse Swipe Right to Reply
+      // Dual Swipe Logic
       let startX = 0;
       let currentX = 0;
       let isSwiping = false;
+
+      const handleSwipeEnd = () => {
+        const diffX = currentX - startX;
+        
+        // Swipe Right -> Reply
+        if (diffX > 40) {
+          setReplyTarget(sender, message);
+        } 
+        // Swipe Left -> Delete (Only for sender's own messages)
+        else if (diffX < -40) {
+          if (sender === currentUser && id) {
+            promptDeleteConfirmation(id);
+          }
+        }
+
+        msgDiv.style.transform = 'translateX(0px)';
+        isSwiping = false;
+        startX = 0;
+        currentX = 0;
+      };
 
       // Touch events (Mobile)
       msgDiv.addEventListener('touchstart', (e) => {
@@ -435,21 +497,14 @@ document.addEventListener('DOMContentLoaded', () => {
       msgDiv.addEventListener('touchmove', (e) => {
         currentX = e.touches[0].clientX;
         const diffX = currentX - startX;
-        if (diffX > 0 && diffX < 80) {
+        if (Math.abs(diffX) < 80) {
           msgDiv.style.transform = `translateX(${diffX}px)`;
         }
       }, { passive: true });
 
-      msgDiv.addEventListener('touchend', () => {
-        const diffX = currentX - startX;
-        if (diffX > 40) {
-          setReplyTarget(sender, message);
-        }
-        msgDiv.style.transform = 'translateX(0px)';
-        startX = 0; currentX = 0;
-      });
+      msgDiv.addEventListener('touchend', handleSwipeEnd);
 
-      // Mouse drag events (Desktop swipe simulation)
+      // Mouse drag events (Desktop)
       msgDiv.addEventListener('mousedown', (e) => {
         startX = e.clientX;
         isSwiping = true;
@@ -459,20 +514,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isSwiping) return;
         currentX = e.clientX;
         const diffX = currentX - startX;
-        if (diffX > 0 && diffX < 80) {
+        if (Math.abs(diffX) < 80) {
           msgDiv.style.transform = `translateX(${diffX}px)`;
         }
       });
 
       window.addEventListener('mouseup', () => {
-        if (!isSwiping) return;
-        const diffX = currentX - startX;
-        if (diffX > 40) {
-          setReplyTarget(sender, message);
-        }
-        msgDiv.style.transform = 'translateX(0px)';
-        isSwiping = false;
-        startX = 0; currentX = 0;
+        if (isSwiping) handleSwipeEnd();
       });
 
       chatContainer.appendChild(msgDiv);
