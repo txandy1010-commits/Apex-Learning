@@ -1,3 +1,7 @@
+<!-- Pusher Library -->
+<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+
+<script>
 // 1. Set Tab Title
 document.title = "google.com";
 
@@ -103,7 +107,7 @@ document.title = "google.com";
 // 3. Main Chat Script
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Pusher === 'undefined') {
-    console.error('Pusher library missing!');
+    console.error('Pusher library missing! Make sure to include pusher.min.js');
     return;
   }
 
@@ -206,12 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pendingDeleteData) {
         const { id, element } = pendingDeleteData;
 
-        // 1. Remove element directly from DOM
         if (element && element.parentNode) {
           element.remove();
         }
 
-        // 2. Clear from LocalStorage
         if (id) {
           removeMessageFromUIAndStorage(id);
           deleteMessage(id);
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    async function fetchUsersFromNeon() {
+    async function loadUsersFromNeon() {
       try {
         const response = await fetch('/api/get-users');
         if (response.ok) {
@@ -271,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Neon fetch failed:', err);
       }
     }
-    fetchUsersFromNeon();
 
     dropdownEl.addEventListener('change', (e) => {
       if (e.target.value) {
@@ -550,8 +551,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    // Initialize state & load users
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
+    loadUsersFromNeon();
     loadChatHistory('global');
   }
 });
+</script>
