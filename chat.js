@@ -51,7 +51,9 @@ document.title = "google.com";
       touch-action: pan-y; 
       transition: transform 0.1s ease-out;
       user-select: none;
+      cursor: grab;
     }
+    .chat-message:active { cursor: grabbing; }
     .chat-message .author { font-weight: bold; color: #5865F2; margin-right: 4px; }
     .chat-message .timestamp { font-size: 11px; color: #949ba4; margin-left: 4px; }
     .chat-message.pm { border-left: 2px solid #f1c40f; padding-left: 6px; }
@@ -437,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Renderer with Dual Swipe (Right = Reply, Left = Delete)
+    // Message Renderer with Fixed Dual-Swipe
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
@@ -464,63 +466,73 @@ document.addEventListener('DOMContentLoaded', () => {
         <div>${escapeHtml(message)}</div>
       `;
 
-      // Dual Swipe Logic
+      // Encapsulated Swipe Logic
       let startX = 0;
       let currentX = 0;
-      let isSwiping = false;
+      let isDragging = false;
 
-      const handleSwipeEnd = () => {
-        const diffX = currentX - startX;
+      const processSwipeEnd = (deltaX) => {
+        msgDiv.style.transform = 'translateX(0px)';
         
-        // Swipe Right -> Reply
-        if (diffX > 40) {
+        // Swipe Right (deltaX > 35) -> Reply
+        if (deltaX > 35) {
           setReplyTarget(sender, message);
         } 
-        // Swipe Left -> Delete (Only for sender's own messages)
-        else if (diffX < -40) {
-          if (sender === currentUser && id) {
+        // Swipe Left (deltaX < -35) -> Delete Prompt
+        else if (deltaX < -35) {
+          if (sender.toLowerCase() === currentUser.toLowerCase() && id) {
             promptDeleteConfirmation(id);
           }
         }
-
-        msgDiv.style.transform = 'translateX(0px)';
-        isSwiping = false;
-        startX = 0;
-        currentX = 0;
       };
 
-      // Touch events (Mobile)
+      // Touch Events
       msgDiv.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
+        currentX = startX;
       }, { passive: true });
 
       msgDiv.addEventListener('touchmove', (e) => {
         currentX = e.touches[0].clientX;
         const diffX = currentX - startX;
-        if (Math.abs(diffX) < 80) {
+        if (Math.abs(diffX) < 100) {
           msgDiv.style.transform = `translateX(${diffX}px)`;
         }
       }, { passive: true });
 
-      msgDiv.addEventListener('touchend', handleSwipeEnd);
+      msgDiv.addEventListener('touchend', () => {
+        processSwipeEnd(currentX - startX);
+        startX = 0; currentX = 0;
+      });
 
-      // Mouse drag events (Desktop)
+      // Mouse Drag Events
       msgDiv.addEventListener('mousedown', (e) => {
         startX = e.clientX;
-        isSwiping = true;
+        currentX = startX;
+        isDragging = true;
       });
 
-      window.addEventListener('mousemove', (e) => {
-        if (!isSwiping) return;
+      const onMouseMove = (e) => {
+        if (!isDragging) return;
         currentX = e.clientX;
         const diffX = currentX - startX;
-        if (Math.abs(diffX) < 80) {
+        if (Math.abs(diffX) < 100) {
           msgDiv.style.transform = `translateX(${diffX}px)`;
         }
-      });
+      };
 
-      window.addEventListener('mouseup', () => {
-        if (isSwiping) handleSwipeEnd();
+      const onMouseUp = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        processSwipeEnd(currentX - startX);
+        startX = 0; currentX = 0;
+      };
+
+      msgDiv.addEventListener('mousedown', () => {
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
       });
 
       chatContainer.appendChild(msgDiv);
