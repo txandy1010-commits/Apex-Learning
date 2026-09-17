@@ -1,5 +1,4 @@
-document.title="Google";
-(function () {
+document.title="Google";(function () {
   // 1. Dynamic Bad Word Filter State
   let bannedWordsList = [];
 
@@ -18,7 +17,6 @@ document.title="Google";
   function containsBadWords(text) {
     if (!bannedWordsList.length) return false;
 
-    // Normalize text: lowercase and strip common leetspeak/punctuation tricks
     const normalized = text.toLowerCase()
       .replace(/[@@]/g, 'a')
       .replace(/[$$]/g, 's')
@@ -292,7 +290,7 @@ document.title="Google";
 
   let activeRecipient = 'global';
   let activeReply = null;
-  
+
   function getLoggedUser() {
     return localStorage.getItem('loggedUser') || localStorage.getItem('username') || 'Anonymous';
   }
@@ -316,8 +314,10 @@ document.title="Google";
 
   function saveMessage(target, msgObj) {
     const history = getHistory(target);
-    history.push(msgObj);
-    localStorage.setItem(getStorageKey(target), JSON.stringify(history));
+    if (!history.some(m => m.id === msgObj.id)) {
+      history.push(msgObj);
+      localStorage.setItem(getStorageKey(target), JSON.stringify(history));
+    }
   }
 
   function removeMessageFromStorage(target, msgId) {
@@ -344,7 +344,6 @@ document.title="Google";
 
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
     element.classList.add('active');
-    
     element.classList.remove('has-unread');
 
     clearReplyTarget();
@@ -365,9 +364,14 @@ document.title="Google";
   }
 
   function appendMessageUI(msgData) {
+    // PREVENT DUPLICATES: Check if this message ID already exists in the DOM
+    if (msgData.id && document.querySelector(`.chat-msg[data-id="${msgData.id}"]`)) {
+      return;
+    }
+
     const msgDiv = document.createElement('div');
     msgDiv.className = 'chat-msg';
-    msgDiv.dataset.id = msgData.id;
+    if (msgData.id) msgDiv.dataset.id = msgData.id;
 
     let replyMarkup = '';
     if (msgData.replyTo) {
@@ -376,7 +380,6 @@ document.title="Google";
 
     const currentUser = getLoggedUser();
     const currentRole = getLoggedRole();
-
     const isOwner = currentRole === 'owner';
     const isSelf = msgData.sender.toLowerCase() === currentUser.toLowerCase();
     const canDelete = isOwner || isSelf;
@@ -416,6 +419,7 @@ document.title="Google";
       });
     }
 
+    // Swipe Right Gesture to Reply
     let touchStartX = 0;
     let touchCurrentX = 0;
 
@@ -452,11 +456,14 @@ document.title="Google";
 
   cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
-  // 7. Pusher Subscriptions (IMPORTANT: Replace placeholders below with your Pusher App Keys)
-  const pusher = new Pusher('c33c47677ef3d8d8a413', { cluster: 'us2' });
+  // 7. Pusher Setup
+  const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_PUSHER_CLUSTER' });
 
   const globalChan = pusher.subscribe('global-chat');
   globalChan.bind('message', function(data) {
+    // Prevent duplicate: Skip rendering if this client sent the message locally
+    if (data.sender.toLowerCase() === getLoggedUser().toLowerCase()) return;
+
     saveMessage('global', data);
     addUserToSidebar(data.sender);
 
@@ -476,8 +483,10 @@ document.title="Google";
   const currentUser = getLoggedUser();
   if (currentUser !== 'Anonymous') {
     const userChan = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
-    
+
     userChan.bind('direct-message', function(data) {
+      if (data.sender.toLowerCase() === getLoggedUser().toLowerCase()) return;
+
       saveMessage(data.sender, data);
       addUserToSidebar(data.sender);
 
@@ -488,7 +497,6 @@ document.title="Google";
         appendMessageUI(data);
       } else {
         if (!isChatOpen) toggleBtn.classList.add('has-unread');
-        
         if (!isTargetActive) {
           const userItem = document.querySelector(`.sidebar-item[data-target="${data.sender}"]`);
           if (userItem) userItem.classList.add('has-unread');
@@ -520,7 +528,6 @@ document.title="Google";
     const text = inputEl.value.trim();
     if (!text) return;
 
-    // Bad Word Validation Check via Neon DB
     if (containsBadWords(text)) {
       alert('Please keep the chat appropriate. Inappropriate language is not allowed.');
       inputEl.value = '';
@@ -539,6 +546,7 @@ document.title="Google";
       replyTo: activeReply
     };
 
+    // Render locally right away
     appendMessageUI(payload);
     saveMessage(activeRecipient, payload);
 
