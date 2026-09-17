@@ -66,7 +66,6 @@ document.title = "google.com";
     
     .msg-actions { display: inline-block; margin-left: 8px; font-size: 11px; }
     .action-btn { color: #949ba4; cursor: pointer; margin-right: 6px; text-decoration: underline; }
-    .action-btn:hover { color: #f2f3f5; }
     .action-btn.delete-btn:hover { color: #ed4245; }
 
     #reply-banner {
@@ -89,31 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Imported Bad Words Array
-  let bannedWordsSet = new Set();
-
-  // Load bad words list automatically from GitHub repository dataset
-  async function loadBadWords() {
-    try {
-      const response = await fetch('https://raw.githubusercontent.com/web-mechanic/badwords-list/master/badwords.txt');
-      const text = await response.text();
-      const words = text.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
-      bannedWordsSet = new Set(words);
-    } catch (err) {
-      console.error('Failed to load online bad words list:', err);
-    }
-  }
-  loadBadWords();
+  // Common profane words array (Add extra words to this list as needed)
+  const BAD_WORDS_LIST = [
+    'fuck', 'shit', 'bitch', 'ass', 'asshole', 'bastard', 'crap', 'dammit', 
+    'damn', 'dick', 'pussy', 'slut', 'whore', 'cock', 'cunt', 'nigger', 'faggot'
+  ];
 
   function filterProfanity(text) {
-    let words = text.split(/\b/);
-    return words.map(word => {
-      const lower = word.toLowerCase();
-      if (bannedWordsSet.has(lower)) {
-        return word[0] + '*'.repeat(word.length - 1);
-      }
-      return word;
-    }).join('');
+    if (!text) return '';
+    // Regex matching full words case-insensitively
+    const pattern = new RegExp('\\b(' + BAD_WORDS_LIST.join('|') + ')\\b', 'gi');
+    return text.replace(pattern, (match) => match[0] + '*'.repeat(match.length - 1));
   }
 
   function getFirstThreeWords(text) {
@@ -122,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return words.slice(0, 3).join(' ');
   }
 
-  // Inject UI
+  // Inject UI Markup
   if (!document.getElementById('chat-widget-toggle')) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
@@ -155,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(wrapper);
 
-    // DOM References
+    // References
     const toggleBtn = document.getElementById('chat-widget-toggle');
     const box = document.getElementById('chat-widget-box');
     const closeBtn = document.getElementById('chat-close-btn');
@@ -170,14 +155,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelReplyBtn = document.getElementById('cancel-reply');
 
     // App State
+    const currentUser = localStorage.getItem('loggedUser') || localStorage.getItem('username') || localStorage.getItem('user') || 'Anonymous';
     const PUSHER_KEY = 'c33c47677ef3d8d8a413';
     const PUSHER_CLUSTER = 'us2';
-    const currentUser = localStorage.getItem('loggedUser') || 'Anonymous';
     let activeRecipient = 'global';
     let currentReplyTarget = null;
 
     toggleBtn.addEventListener('click', () => { box.style.display = box.style.display === 'flex' ? 'none' : 'flex'; });
     closeBtn.addEventListener('click', () => { box.style.display = 'none'; });
+
+    // Local Cross-Tab Presence Sync
+    const presenceChannel = new BroadcastChannel('chat_presence');
+    presenceChannel.postMessage({ type: 'ANNOUNCE_USER', user: currentUser });
+    presenceChannel.onmessage = (e) => {
+      if (e.data && e.data.type === 'ANNOUNCE_USER') {
+        addUserToSidebarAndDropdown(e.data.user);
+      }
+    };
 
     // Pusher Setup
     const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
@@ -211,21 +205,23 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Fetch users from Neon Database
+    // Fetch users from server API
     async function fetchUsersFromNeon() {
       try {
         const response = await fetch('/api/get-users');
-        const data = await response.json();
-        if (data.users && Array.isArray(data.users)) {
-          data.users.forEach(u => addUserToSidebarAndDropdown(u));
+        if (response.ok) {
+          const data = await response.json();
+          if (data.users && Array.isArray(data.users)) {
+            data.users.forEach(u => addUserToSidebarAndDropdown(u));
+          }
         }
       } catch (err) {
-        console.error('Error fetching Neon users:', err);
+        console.error('Neon fetch failed:', err);
       }
     }
     fetchUsersFromNeon();
 
-    // Handle Dropdown DM Switch
+    // Dropdown Change Handler
     dropdownEl.addEventListener('change', (e) => {
       if (e.target.value) {
         const item = document.querySelector(`.sidebar-item[data-target="${e.target.value}"]`);
@@ -234,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Handle Send
+    // Send Message
     const handleSend = async () => {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -281,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', handleSend);
     inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 
-    // Reply Logic
+    // Reply Banner Handlers
     function setReplyTarget(sender, messageText) {
       currentReplyTarget = { sender, text: messageText };
       const shortText = getFirstThreeWords(messageText);
@@ -297,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
-    // Delete Logic
+    // Delete Handlers
     async function deleteMessage(msgId) {
       removeMessageFromUIAndStorage(activeRecipient, msgId);
 
@@ -348,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Sidebar/Dropdown Rendering
+    // Populate Sidebar and Dropdown
     function addUserToSidebarAndDropdown(username) {
       if (!username || username.toLowerCase() === currentUser.toLowerCase() || username === 'Anonymous' || username === 'global') return;
       
@@ -388,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
       switchChannel('global', this);
     });
 
-    // Message Display Renderer
+    // Message Renderer
     function renderIncomingMessage(msgData) {
       const { id, sender, message, created_at, replyTo } = msgData;
       const isPrivate = activeRecipient !== 'global';
@@ -406,12 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
         replyPrefixHTML = `<span class="reply-prefix">replying to the message "${escapeHtml(firstThree)}..."</span>`;
       }
 
-      let actionsHTML = `<span class="msg-actions">`;
-      actionsHTML += `<span class="action-btn reply-btn">Reply</span>`;
+      let actionsHTML = '';
       if (sender === currentUser && id) {
-        actionsHTML += `<span class="action-btn delete-btn">Delete</span>`;
+        actionsHTML = `<span class="msg-actions"><span class="action-btn delete-btn">Delete</span></span>`;
       }
-      actionsHTML += `</span>`;
 
       msgDiv.innerHTML = `
         <div>
@@ -423,17 +417,17 @@ document.addEventListener('DOMContentLoaded', () => {
         <div>${escapeHtml(message)}</div>
       `;
 
-      msgDiv.querySelector('.reply-btn').addEventListener('click', () => setReplyTarget(sender, message));
-      
       const deleteBtn = msgDiv.querySelector('.delete-btn');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', () => deleteMessage(id));
       }
 
-      // Swipe Right to Reply
+      // Touch & Mouse Swipe Right to Reply
       let startX = 0;
       let currentX = 0;
+      let isSwiping = false;
 
+      // Touch events (Mobile)
       msgDiv.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
       }, { passive: true });
@@ -448,12 +442,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
       msgDiv.addEventListener('touchend', () => {
         const diffX = currentX - startX;
-        if (diffX > 50) {
+        if (diffX > 40) {
           setReplyTarget(sender, message);
         }
         msgDiv.style.transform = 'translateX(0px)';
-        startX = 0;
-        currentX = 0;
+        startX = 0; currentX = 0;
+      });
+
+      // Mouse drag events (Desktop swipe simulation)
+      msgDiv.addEventListener('mousedown', (e) => {
+        startX = e.clientX;
+        isSwiping = true;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isSwiping) return;
+        currentX = e.clientX;
+        const diffX = currentX - startX;
+        if (diffX > 0 && diffX < 80) {
+          msgDiv.style.transform = `translateX(${diffX}px)`;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isSwiping) return;
+        const diffX = currentX - startX;
+        if (diffX > 40) {
+          setReplyTarget(sender, message);
+        }
+        msgDiv.style.transform = 'translateX(0px)';
+        isSwiping = false;
+        startX = 0; currentX = 0;
       });
 
       chatContainer.appendChild(msgDiv);
@@ -473,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    // Startup
     const savedUsers = JSON.parse(localStorage.getItem('chat_sidebar_users') || '[]');
     savedUsers.forEach(u => addUserToSidebarAndDropdown(u));
     loadChatHistory('global');
