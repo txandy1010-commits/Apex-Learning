@@ -9,7 +9,7 @@
   <script>
     (function verifyPageAccess() {
       const username = (localStorage.getItem('loggedUser') || '').toLowerCase();
-      const roles = JSON.parse(localStorage.getItem('userRoles') || '[]').map(r => String(r).toLowerCase());
+      const roles = JSON.parse(localStorage.getItem('role') || '[]').map(r => String(r).toLowerCase());
 
       const isGuest111 = username === 'guest111';
       const isOwner = roles.includes('owner');
