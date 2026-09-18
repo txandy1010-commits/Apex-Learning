@@ -2,39 +2,6 @@ document.title = "Google";
 
 (function () {
   // ==========================================
-  // 0. GLOBAL PAGE ACCESS CHECK
-  // ==========================================
-  function checkGlobalPageAccess() {
-    let userRoles = [];
-    try {
-      userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
-      if (!Array.isArray(userRoles)) {
-        userRoles = [localStorage.getItem('userRoles')];
-      }
-    } catch (e) {
-      userRoles = [localStorage.getItem('userRoles')];
-    }
-
-    const role = (localStorage.getItem('role') || '').toLowerCase();
-    const user = (localStorage.getItem('loggedUser') || localStorage.getItem('username') || '').toLowerCase();
-    
-    // Combine all potential tag/role sources
-    const allTags = [...userRoles.map(r => String(r).toLowerCase()), role, user];
-    const allowedRoles = ['user', 'admin', 'owner'];
-
-    // If user doesn't have at least one allowed tag/role, redirect
-    const hasAccess = allTags.some(t => allowedRoles.includes(t));
-
-    if (!hasAccess) {
-      window.location.href = 'https://www.google.com';
-    }
-  }
-
-  // Run access check immediately, then every 5 seconds
-  checkGlobalPageAccess();
-  setInterval(checkGlobalPageAccess, 5000);
-
-  // ==========================================
   // 1. Dynamic Bad Word Filter State
   // ==========================================
   let bannedWordsList = [];
