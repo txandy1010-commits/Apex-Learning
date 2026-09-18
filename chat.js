@@ -1,5 +1,42 @@
-document.title="Google";(function () {
+document.title = "Google";
+
+(function () {
+  // ==========================================
+  // 0. GLOBAL PAGE ACCESS CHECK
+  // ==========================================
+  function checkGlobalPageAccess() {
+    let userRoles = [];
+    try {
+      userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+      if (!Array.isArray(userRoles)) {
+        userRoles = [localStorage.getItem('userRoles')];
+      }
+    } catch (e) {
+      userRoles = [localStorage.getItem('userRoles')];
+    }
+
+    const role = (localStorage.getItem('role') || '').toLowerCase();
+    const user = (localStorage.getItem('loggedUser') || localStorage.getItem('username') || '').toLowerCase();
+    
+    // Combine all potential tag/role sources
+    const allTags = [...userRoles.map(r => String(r).toLowerCase()), role, user];
+    const allowedRoles = ['user', 'admin', 'owner'];
+
+    // If user doesn't have at least one allowed tag/role, redirect
+    const hasAccess = allTags.some(t => allowedRoles.includes(t));
+
+    if (!hasAccess) {
+      window.location.href = 'https://www.google.com';
+    }
+  }
+
+  // Run access check immediately, then every 5 seconds
+  checkGlobalPageAccess();
+  setInterval(checkGlobalPageAccess, 5000);
+
+  // ==========================================
   // 1. Dynamic Bad Word Filter State
+  // ==========================================
   let bannedWordsList = [];
 
   async function fetchBannedWordsFromNeon() {
@@ -13,18 +50,6 @@ document.title="Google";(function () {
       console.error('Failed to load banned words from Neon:', err);
     }
   }
-
-  // Function to check if the current user has access to the page
-// Function to verify if the user has a valid allowed role
-
-
-// Run immediately on page load, then check every 5 seconds
-checkGlobalPageAccess();
-setInterval(checkGlobalPageAccess, 5000);
-
-// Run the check immediately on load, then every 5,000 milliseconds (5 seconds)
-checkGlobalPageAccess();
-setInterval(checkGlobalPageAccess, 5000);
 
   function containsBadWords(text) {
     if (!bannedWordsList.length) return false;
@@ -42,7 +67,9 @@ setInterval(checkGlobalPageAccess, 5000);
     });
   }
 
+  // ==========================================
   // 2. Inject Styles
+  // ==========================================
   const style = document.createElement('style');
   style.innerHTML = `
     #chat-widget-toggle {
@@ -253,7 +280,9 @@ setInterval(checkGlobalPageAccess, 5000);
   `;
   document.head.appendChild(style);
 
+  // ==========================================
   // 3. Inject HTML
+  // ==========================================
   const widgetHTML = `
     <div id="chat-widget-toggle">💬</div>
     <div id="chat-widget-box">
@@ -286,7 +315,9 @@ setInterval(checkGlobalPageAccess, 5000);
   wrapper.innerHTML = widgetHTML;
   document.body.appendChild(wrapper);
 
+  // ==========================================
   // 4. UI References & State Variables
+  // ==========================================
   const toggleBtn = document.getElementById('chat-widget-toggle');
   const box = document.getElementById('chat-widget-box');
   const closeBtn = document.getElementById('chat-close-btn');
@@ -315,7 +346,9 @@ setInterval(checkGlobalPageAccess, 5000);
     box.style.display = 'flex';
   }
 
+  // ==========================================
   // 5. LocalStorage Helpers
+  // ==========================================
   function getStorageKey(target) {
     return `chat_history_${target.toLowerCase()}`;
   }
@@ -337,7 +370,9 @@ setInterval(checkGlobalPageAccess, 5000);
     localStorage.setItem(getStorageKey(target), JSON.stringify(history));
   }
 
+  // ==========================================
   // 6. Sidebar & UI Logic
+  // ==========================================
   function addUserToSidebar(username) {
     if (!username || username === 'Anonymous' || username.toLowerCase() === getLoggedUser().toLowerCase()) return;
     if (document.querySelector(`.sidebar-item[data-target="${username}"]`)) return;
@@ -376,7 +411,6 @@ setInterval(checkGlobalPageAccess, 5000);
   }
 
   function appendMessageUI(msgData) {
-    // PREVENT DUPLICATES: Check if this message ID already exists in the DOM
     if (msgData.id && document.querySelector(`.chat-msg[data-id="${msgData.id}"]`)) {
       return;
     }
@@ -431,7 +465,6 @@ setInterval(checkGlobalPageAccess, 5000);
       });
     }
 
-    // Swipe Right Gesture to Reply
     let touchStartX = 0;
     let touchCurrentX = 0;
 
@@ -468,62 +501,67 @@ setInterval(checkGlobalPageAccess, 5000);
 
   cancelReplyBtn.addEventListener('click', clearReplyTarget);
 
+  // ==========================================
   // 7. Pusher Setup
-  const pusher = new Pusher('c33c47677ef3d8d8a413', { cluster: 'us2' });
+  // ==========================================
+  if (typeof Pusher !== 'undefined') {
+    const pusher = new Pusher('c33c47677ef3d8d8a413', { cluster: 'us2' });
 
-  const globalChan = pusher.subscribe('global-chat');
-  globalChan.bind('message', function(data) {
-    // Prevent duplicate: Skip rendering if this client sent the message locally
-    if (data.sender.toLowerCase() === getLoggedUser().toLowerCase()) return;
-
-    saveMessage('global', data);
-    addUserToSidebar(data.sender);
-
-    if (activeRecipient === 'global') {
-      appendMessageUI(data);
-    } else {
-      if (box.style.display !== 'flex') toggleBtn.classList.add('has-unread');
-    }
-  });
-
-  globalChan.bind('delete-message', function(data) {
-    removeMessageFromStorage('global', data.id);
-    const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
-    if (existing) existing.remove();
-  });
-
-  const currentUser = getLoggedUser();
-  if (currentUser !== 'Anonymous') {
-    const userChan = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
-
-    userChan.bind('direct-message', function(data) {
+    const globalChan = pusher.subscribe('global-chat');
+    globalChan.bind('message', function(data) {
       if (data.sender.toLowerCase() === getLoggedUser().toLowerCase()) return;
 
-      saveMessage(data.sender, data);
+      saveMessage('global', data);
       addUserToSidebar(data.sender);
 
-      const isChatOpen = box.style.display === 'flex';
-      const isTargetActive = activeRecipient.toLowerCase() === data.sender.toLowerCase();
-
-      if (isChatOpen && isTargetActive) {
+      if (activeRecipient === 'global') {
         appendMessageUI(data);
       } else {
-        if (!isChatOpen) toggleBtn.classList.add('has-unread');
-        if (!isTargetActive) {
-          const userItem = document.querySelector(`.sidebar-item[data-target="${data.sender}"]`);
-          if (userItem) userItem.classList.add('has-unread');
-        }
+        if (box.style.display !== 'flex') toggleBtn.classList.add('has-unread');
       }
     });
 
-    userChan.bind('delete-message', function(data) {
-      removeMessageFromStorage(activeRecipient, data.id);
+    globalChan.bind('delete-message', function(data) {
+      removeMessageFromStorage('global', data.id);
       const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
       if (existing) existing.remove();
     });
+
+    const currentUser = getLoggedUser();
+    if (currentUser !== 'Anonymous') {
+      const userChan = pusher.subscribe(`user-${currentUser.toLowerCase()}`);
+
+      userChan.bind('direct-message', function(data) {
+        if (data.sender.toLowerCase() === getLoggedUser().toLowerCase()) return;
+
+        saveMessage(data.sender, data);
+        addUserToSidebar(data.sender);
+
+        const isChatOpen = box.style.display === 'flex';
+        const isTargetActive = activeRecipient.toLowerCase() === data.sender.toLowerCase();
+
+        if (isChatOpen && isTargetActive) {
+          appendMessageUI(data);
+        } else {
+          if (!isChatOpen) toggleBtn.classList.add('has-unread');
+          if (!isTargetActive) {
+            const userItem = document.querySelector(`.sidebar-item[data-target="${data.sender}"]`);
+            if (userItem) userItem.classList.add('has-unread');
+          }
+        }
+      });
+
+      userChan.bind('delete-message', function(data) {
+        removeMessageFromStorage(activeRecipient, data.id);
+        const existing = document.querySelector(`.chat-msg[data-id="${data.id}"]`);
+        if (existing) existing.remove();
+      });
+    }
   }
 
+  // ==========================================
   // 8. Network Requests & Message Sending
+  // ==========================================
   async function fetchUsersFromNeon() {
     try {
       const res = await fetch('/api/get-users');
@@ -558,7 +596,6 @@ setInterval(checkGlobalPageAccess, 5000);
       replyTo: activeReply
     };
 
-    // Render locally right away
     appendMessageUI(payload);
     saveMessage(activeRecipient, payload);
 
@@ -576,7 +613,9 @@ setInterval(checkGlobalPageAccess, 5000);
     }
   }
 
-  // 9. Event Listeners
+  // ==========================================
+  // 9. Event Listeners & Init
+  // ==========================================
   toggleBtn.addEventListener('click', () => {
     const isOpening = box.style.display !== 'flex';
     box.style.display = isOpening ? 'flex' : 'none';
