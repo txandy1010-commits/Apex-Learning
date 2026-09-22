@@ -3116,9 +3116,8 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
 <!-- Load Your Chat Script -->
 <script src="/chat.js"></script>
 
-    <script>
+   <script>
 (function() {
-  // Function containing the autoclicker logic to inject into the about:blank window
   function injectAutoClicker(gameWindow) {
     try {
       const doc = gameWindow.document;
@@ -3129,26 +3128,57 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
           let autoClickerInterval = null;
           let isAutoClickerRunning = false;
 
-          function triggerClick(target) {
+          function triggerClickOnTarget(target, clientX, clientY) {
             if (!target) return;
-            const opts = { bubbles: true, cancelable: true, view: window };
-            target.dispatchEvent(new PointerEvent('pointerdown', opts));
-            target.dispatchEvent(new MouseEvent('mousedown', opts));
-            target.dispatchEvent(new MouseEvent('mouseup', opts));
-            target.dispatchEvent(new PointerEvent('pointerup', opts));
-            target.dispatchEvent(new MouseEvent('click', opts));
+
+            const rect = target.getBoundingClientRect();
+            const x = clientX || (rect.left + rect.width / 2);
+            const y = clientY || (rect.top + rect.height / 2);
+
+            const eventInit = {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              clientX: x,
+              clientY: y,
+              screenX: x,
+              screenY: y,
+              button: 0,
+              buttons: 1
+            };
+
+            target.dispatchEvent(new PointerEvent('pointerdown', eventInit));
+            target.dispatchEvent(new MouseEvent('mousedown', eventInit));
+            target.dispatchEvent(new MouseEvent('mouseup', eventInit));
+            target.dispatchEvent(new PointerEvent('pointerup', eventInit));
+            target.dispatchEvent(new MouseEvent('click', eventInit));
           }
 
-          // Hold Middle Mouse Button (Button 1) inside the game tab to auto-click
+          function getGameCanvas() {
+            // Find canvas in main document or inside embedded same-origin frames
+            let canvas = document.querySelector('canvas');
+            if (canvas) return canvas;
+
+            const iframes = document.querySelectorAll('iframe');
+            for (let frame of iframes) {
+              try {
+                canvas = frame.contentDocument.querySelector('canvas');
+                if (canvas) return canvas;
+              } catch(e) {}
+            }
+            return document.body;
+          }
+
           window.addEventListener('mousedown', (event) => {
+            // Button 1 = Middle Mouse / Scroll Wheel
             if (event.button === 1) { 
-              const target = document.querySelector('canvas') || document.body;
+              const target = getGameCanvas();
               if (!target || isAutoClickerRunning) return;
 
               isAutoClickerRunning = true;
               autoClickerInterval = setInterval(() => {
-                triggerClick(target);
-              }, 50); // 50ms = ~20 clicks per second
+                triggerClickOnTarget(target, event.clientX, event.clientY);
+              }, 50);
             }
           });
 
@@ -3159,24 +3189,20 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
               isAutoClickerRunning = false;
             }
           });
-
-          console.log('Autoclicker injected into about:blank window!');
         })();
       `;
 
       doc.head.appendChild(script);
     } catch (err) {
-      console.error('Could not inject autoclicker:', err);
+      console.error('Injection error:', err);
     }
   }
 
-  // Intercept window.open calls to automatically attach the autoclicker when about:blank opens
   const originalOpen = window.open;
   window.open = function(...args) {
     const newWin = originalOpen.apply(window, args);
     if (newWin) {
-      // Inject after the new window loads its document structure
-      setTimeout(() => injectAutoClicker(newWin), 500);
+      setTimeout(() => injectAutoClicker(newWin), 1000);
     }
     return newWin;
   };
