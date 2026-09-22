@@ -3116,7 +3116,72 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
 <!-- Load Your Chat Script -->
 <script src="/chat.js"></script>
 
-    <script src="autoclicker.js"></script>
+    <script>
+(function() {
+  // Function containing the autoclicker logic to inject into the about:blank window
+  function injectAutoClicker(gameWindow) {
+    try {
+      const doc = gameWindow.document;
+      const script = doc.createElement('script');
+      
+      script.textContent = `
+        (function() {
+          let autoClickerInterval = null;
+          let isAutoClickerRunning = false;
+
+          function triggerClick(target) {
+            if (!target) return;
+            const opts = { bubbles: true, cancelable: true, view: window };
+            target.dispatchEvent(new PointerEvent('pointerdown', opts));
+            target.dispatchEvent(new MouseEvent('mousedown', opts));
+            target.dispatchEvent(new MouseEvent('mouseup', opts));
+            target.dispatchEvent(new PointerEvent('pointerup', opts));
+            target.dispatchEvent(new MouseEvent('click', opts));
+          }
+
+          // Hold Middle Mouse Button (Button 1) inside the game tab to auto-click
+          window.addEventListener('mousedown', (event) => {
+            if (event.button === 1) { 
+              const target = document.querySelector('canvas') || document.body;
+              if (!target || isAutoClickerRunning) return;
+
+              isAutoClickerRunning = true;
+              autoClickerInterval = setInterval(() => {
+                triggerClick(target);
+              }, 50); // 50ms = ~20 clicks per second
+            }
+          });
+
+          window.addEventListener('mouseup', (event) => {
+            if (event.button === 1 && isAutoClickerRunning) {
+              clearInterval(autoClickerInterval);
+              autoClickerInterval = null;
+              isAutoClickerRunning = false;
+            }
+          });
+
+          console.log('Autoclicker injected into about:blank window!');
+        })();
+      `;
+
+      doc.head.appendChild(script);
+    } catch (err) {
+      console.error('Could not inject autoclicker:', err);
+    }
+  }
+
+  // Intercept window.open calls to automatically attach the autoclicker when about:blank opens
+  const originalOpen = window.open;
+  window.open = function(...args) {
+    const newWin = originalOpen.apply(window, args);
+    if (newWin) {
+      // Inject after the new window loads its document structure
+      setTimeout(() => injectAutoClicker(newWin), 500);
+    }
+    return newWin;
+  };
+})();
+</script>
 
 </body>
 </html>
