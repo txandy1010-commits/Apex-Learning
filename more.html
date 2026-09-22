@@ -3127,63 +3127,52 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
         (function() {
           let autoClickerInterval = null;
           let isAutoClickerRunning = false;
+          let lastX = window.innerWidth / 2;
+          let lastY = window.innerHeight / 2;
 
-          function triggerClickOnTarget(target, clientX, clientY) {
+          // Track touch or mouse position on screen
+          window.addEventListener('mousemove', (e) => { lastX = e.clientX; lastY = e.clientY; }, true);
+          window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+            }
+          }, true);
+
+          function triggerClick() {
+            const target = document.elementFromPoint(lastX, lastY) || document.querySelector('canvas') || document.body;
             if (!target) return;
 
-            const rect = target.getBoundingClientRect();
-            const x = clientX || (rect.left + rect.width / 2);
-            const y = clientY || (rect.top + rect.height / 2);
-
-            const eventInit = {
+            const opts = {
               bubbles: true,
               cancelable: true,
               view: window,
-              clientX: x,
-              clientY: y,
-              screenX: x,
-              screenY: y,
-              button: 0,
-              buttons: 1
+              clientX: lastX,
+              clientY: lastY,
+              screenX: lastX,
+              screenY: lastY,
+              button: 0
             };
 
-            target.dispatchEvent(new PointerEvent('pointerdown', eventInit));
-            target.dispatchEvent(new MouseEvent('mousedown', eventInit));
-            target.dispatchEvent(new MouseEvent('mouseup', eventInit));
-            target.dispatchEvent(new PointerEvent('pointerup', eventInit));
-            target.dispatchEvent(new MouseEvent('click', eventInit));
+            target.dispatchEvent(new MouseEvent('mousedown', opts));
+            target.dispatchEvent(new MouseEvent('mouseup', opts));
+            target.dispatchEvent(new MouseEvent('click', opts));
           }
 
-          function getGameCanvas() {
-            // Find canvas in main document or inside embedded same-origin frames
-            let canvas = document.querySelector('canvas');
-            if (canvas) return canvas;
-
-            const iframes = document.querySelectorAll('iframe');
-            for (let frame of iframes) {
-              try {
-                canvas = frame.contentDocument.querySelector('canvas');
-                if (canvas) return canvas;
-              } catch(e) {}
-            }
-            return document.body;
-          }
-
-          window.addEventListener('mousedown', (event) => {
-            // Button 1 = Middle Mouse / Scroll Wheel
-            if (event.button === 1) { 
-              const target = getGameCanvas();
-              if (!target || isAutoClickerRunning) return;
-
+          // Hold Spacebar to trigger autoclicker on iPad or Desktop
+          window.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' && !isAutoClickerRunning) {
+              // Prevent page scrolling when holding Spacebar
+              if (event.target === document.body || event.target.tagName === 'CANVAS') {
+                event.preventDefault();
+              }
               isAutoClickerRunning = true;
-              autoClickerInterval = setInterval(() => {
-                triggerClickOnTarget(target, event.clientX, event.clientY);
-              }, 50);
+              autoClickerInterval = setInterval(triggerClick, 50); // 20 clicks/sec
             }
           });
 
-          window.addEventListener('mouseup', (event) => {
-            if (event.button === 1 && isAutoClickerRunning) {
+          window.addEventListener('keyup', (event) => {
+            if (event.code === 'Space' && isAutoClickerRunning) {
               clearInterval(autoClickerInterval);
               autoClickerInterval = null;
               isAutoClickerRunning = false;
