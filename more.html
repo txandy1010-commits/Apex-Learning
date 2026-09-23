@@ -2341,44 +2341,46 @@
                 buttonsContainer.className = 'buttons-container';
 
                 if (filesByChar[char].length > 0) {
-                    filesByChar[char].forEach(file => {
-                        const wrapper = document.createElement('div');
-                        wrapper.style.display = 'flex';
-                        wrapper.style.gap = '8px';
-                        wrapper.style.alignItems = 'center';
+    filesByChar[char].forEach(file => {
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.gap = '8px';
+        wrapper.style.alignItems = 'center';
 
-                        const playBtn = document.createElement('input');
-                        playBtn.type = 'button';
-                        playBtn.value = file.replace(/^cl/i,'');
-                        playBtn.style.flex = '1';
+        const playBtn = document.createElement('input');
+        playBtn.type = 'button';
+        playBtn.value = file.replace(/^cl/i,'');
+        playBtn.style.flex = '1';
 
-                        playBtn.onclick = () => {
-                            addXP(xpPerGame());
-                            recordRecentGame(file);
-                            function normalizeFileName(name) {
-                                if (name.includes('.') && name.lastIndexOf('.') > 0) return name;
-                                return name + '.html';
-                            }
+        playBtn.onclick = () => {
+            // Safe calls to prevent 'ReferenceError: addXP is not defined'
+            if (typeof addXP === 'function' && typeof xpPerGame === 'function') {
+                addXP(xpPerGame());
+            }
+            if (typeof recordRecentGame === 'function') {
+                recordRecentGame(file);
+            }
 
-                            const normalized = normalizeFileName(file);
-                            const encoded = encodeURIComponent(normalized);
+            function normalizeFileName(name) {
+                if (name.includes('.') && name.lastIndexOf('.') > 0) return name;
+                return name + '.html';
+            }
 
-                            fetch(`https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`)
-                                .then(response => response.text())
-                                .then(text => {
-                                    const newWin = window.open("about:blank", "_blank");
-                                    if (newWin) {
-                                        // Build script injection tag pointing to domain root chat.js
-                                        const chatScript = `<script src="${window.location.origin}/chat.js"><\/script>`;
-                                        
-                                        newWin.document.open();
-                                        // Appends chat.js into the game HTML source
-                                        newWin.document.write(text + chatScript);
-                                        newWin.document.close();
-                                    }
-                                });
-                        };
+            const normalized = normalizeFileName(file);
+            const encoded = encodeURIComponent(normalized);
 
+            fetch(`https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`)
+                .then(response => response.text())
+                .then(text => {
+                    const newWin = window.open("about:blank", "_blank");
+                    if (newWin) {
+                        const chatScript = `<script src="${window.location.origin}/chat.js"><\/script>`;
+                        newWin.document.open();
+                        newWin.document.write(text + chatScript);
+                        newWin.document.close();
+                    }
+                });
+        };
                         const downloadBtn = document.createElement('button');
                         downloadBtn.textContent = '⬇';
                         downloadBtn.style.padding = '10px';
