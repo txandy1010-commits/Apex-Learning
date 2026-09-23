@@ -2352,35 +2352,42 @@
         playBtn.value = file.replace(/^cl/i,'');
         playBtn.style.flex = '1';
 
-        playBtn.onclick = () => {
-            // Safe calls to prevent 'ReferenceError: addXP is not defined'
-            if (typeof addXP === 'function' && typeof xpPerGame === 'function') {
-                addXP(xpPerGame());
-            }
-            if (typeof recordRecentGame === 'function') {
-                recordRecentGame(file);
+        fetch(`https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`)
+    .then(response => response.text())
+    .then(htmlText => {
+        const newWin = window.open("about:blank", "_blank");
+        if (newWin) {
+            // Script tag for chat.js
+            const chatScriptTag = `<script src="${window.location.origin}/chat.js"><\/script>`;
+
+            // Script for dynamic canvas targeting (fixes auto-clicker for Idle Breakout)
+            const autoClickerFixTag = `
+            <script>
+              (function() {
+                // Wait for the game canvas to load dynamically
+                const checkCanvas = setInterval(() => {
+                  const canvas = document.querySelector('canvas');
+                  if (canvas) {
+                    clearInterval(checkCanvas);
+                    console.log('Game canvas detected for auto-clicker.');
+                  }
+                }, 100);
+              })();
+            <\/script>`;
+
+            // Inject scripts directly before closing </body> tag so game scripts don't wipe them
+            let modifiedHtml = htmlText;
+            if (modifiedHtml.includes('</body>')) {
+                modifiedHtml = modifiedHtml.replace('</body>', `${chatScriptTag}${autoClickerFixTag}</body>`);
+            } else {
+                modifiedHtml += chatScriptTag + autoClickerFixTag;
             }
 
-            function normalizeFileName(name) {
-                if (name.includes('.') && name.lastIndexOf('.') > 0) return name;
-                return name + '.html';
-            }
-
-            const normalized = normalizeFileName(file);
-            const encoded = encodeURIComponent(normalized);
-
-            fetch(`https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`)
-                .then(response => response.text())
-                .then(text => {
-                    const newWin = window.open("about:blank", "_blank");
-                    if (newWin) {
-                        const chatScript = `<script src="${window.location.origin}/chat.js"><\/script>`;
-                        newWin.document.open();
-                        newWin.document.write(text + chatScript);
-                        newWin.document.close();
-                    }
-                });
-        };
+            newWin.document.open();
+            newWin.document.write(modifiedHtml);
+            newWin.document.close();
+        }
+    });
                         const downloadBtn = document.createElement('button');
                         downloadBtn.textContent = '⬇';
                         downloadBtn.style.padding = '10px';
