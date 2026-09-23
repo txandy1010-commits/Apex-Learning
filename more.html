@@ -3111,92 +3111,51 @@ document.addEventListener("DOMContentLoaded", renderRecentGames);
 
 })();
 </script>
-    <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+    <script>
+    function launchGame(file) {
+    // 1. Open a new about:blank window/tab
+    const win = window.open('about:blank', '_blank');
+    if (!win) return;
 
-<!-- Load Your Chat Script -->
-<script src="/chat.js"></script>
+    // 2. Build the basic HTML structure for the new tab
+    const doc = win.document;
+    doc.open();
+    doc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Game</title>
+            <style>
+                body, html {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
+                    background: #000;
+                }
+                iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }
+            </style>
+        </head>
+        <body>
+            <iframe src="${file}"></iframe>
+        </body>
+        </html>
+    `);
+    doc.close();
 
-   <script>
-(function() {
-  function injectAutoClicker(gameWindow) {
-    try {
-      const doc = gameWindow.document;
-      const script = doc.createElement('script');
-      
-      script.textContent = `
-        (function() {
-          let autoClickerInterval = null;
-          let isAutoClickerRunning = false;
-          let lastX = window.innerWidth / 2;
-          let lastY = window.innerHeight / 2;
-
-          // Track touch or mouse position on screen
-          window.addEventListener('mousemove', (e) => { lastX = e.clientX; lastY = e.clientY; }, true);
-          window.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 0) {
-              lastX = e.touches[0].clientX;
-              lastY = e.touches[0].clientY;
-            }
-          }, true);
-
-          function triggerClick() {
-            const target = document.elementFromPoint(lastX, lastY) || document.querySelector('canvas') || document.body;
-            if (!target) return;
-
-            const opts = {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-              clientX: lastX,
-              clientY: lastY,
-              screenX: lastX,
-              screenY: lastY,
-              button: 0
-            };
-
-            target.dispatchEvent(new MouseEvent('mousedown', opts));
-            target.dispatchEvent(new MouseEvent('mouseup', opts));
-            target.dispatchEvent(new MouseEvent('click', opts));
-          }
-
-          // Hold Spacebar to trigger autoclicker on iPad or Desktop
-          window.addEventListener('keydown', (event) => {
-            if (event.code === 'Space' && !isAutoClickerRunning) {
-              // Prevent page scrolling when holding Spacebar
-              if (event.target === document.body || event.target.tagName === 'CANVAS') {
-                event.preventDefault();
-              }
-              isAutoClickerRunning = true;
-              autoClickerInterval = setInterval(triggerClick, 50); // 20 clicks/sec
-            }
-          });
-
-          window.addEventListener('keyup', (event) => {
-            if (event.code === 'Space' && isAutoClickerRunning) {
-              clearInterval(autoClickerInterval);
-              autoClickerInterval = null;
-              isAutoClickerRunning = false;
-            }
-          });
-        })();
-      `;
-
-      doc.head.appendChild(script);
-    } catch (err) {
-      console.error('Injection error:', err);
-    }
-  }
-
-  const originalOpen = window.open;
-  window.open = function(...args) {
-    const newWin = originalOpen.apply(window, args);
-    if (newWin) {
-      setTimeout(() => injectAutoClicker(newWin), 1000);
-    }
-    return newWin;
-  };
-})();
+    // 3. Inject chat.js directly into the newly created about:blank document
+    const script = doc.createElement('script');
+    
+    // Use absolute URL to ensure chat.js resolves properly from about:blank
+    script.src = new URL('chat.js', window.location.href).href;
+    
+    doc.body.appendChild(script);
+}
 </script>
-
 </body>
 </html>
