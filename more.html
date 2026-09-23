@@ -2352,7 +2352,7 @@
         playBtn.value = file.replace(/^cl/i,'');
         playBtn.style.flex = '1';
 
-        playBtn.onclick = () => {
+       playBtn.onclick = () => {
     if (typeof addXP === 'function' && typeof xpPerGame === 'function') {
         addXP(xpPerGame());
     }
@@ -2367,46 +2367,26 @@
 
     const normalized = normalizeFileName(file);
     const encoded = encodeURIComponent(normalized);
+    const cdnBaseUrl = "https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/";
 
-    fetch(`https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`)
+    fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`)
         .then(response => response.text())
         .then(htmlText => {
             const newWin = window.open("about:blank", "_blank");
             if (newWin) {
-                // Script tag for chat.js
+                // Base tag forces relative asset calls (like Idle Breakout engine files) to load from the CDN
+                const baseTag = `<base href="${cdnBaseUrl}">`;
+                
+                // Absolute URL to chat.js on your main site host
                 const chatScriptTag = `<script src="${window.location.origin}/chat.js"><\/script>`;
 
-                // Injects script directly into child iframes if Idle Breakout uses them
-                const iframeScriptInjector = `
-                <script>
-                  (function() {
-                    function injectIntoFrames() {
-                      const frames = document.querySelectorAll('iframe');
-                      frames.forEach(frame => {
-                        try {
-                          const frameDoc = frame.contentDocument || frame.contentWindow.document;
-                          if (frameDoc && !frameDoc.querySelector('script[data-injected="true"]')) {
-                            const s = frameDoc.createElement('script');
-                            s.setAttribute('data-injected', 'true');
-                            s.src = "${window.location.origin}/chat.js";
-                            frameDoc.head.appendChild(s);
-                          }
-                        } catch(e) {
-                          // Ignore cross-origin frame restriction errors
-                        }
-                      });
-                    }
-
-                    // Poll continuously to catch dynamically created game iframes
-                    setInterval(injectIntoFrames, 500);
-                  })();
-                <\/script>`;
-
                 let modifiedHtml = htmlText;
-                if (modifiedHtml.includes('</head>')) {
-                    modifiedHtml = modifiedHtml.replace('</head>', `${chatScriptTag}${iframeScriptInjector}</head>`);
+
+                // Inject <base> and chat.js at the top of <head>
+                if (modifiedHtml.includes('<head>')) {
+                    modifiedHtml = modifiedHtml.replace('<head>', `<head>${baseTag}${chatScriptTag}`);
                 } else {
-                    modifiedHtml = chatScriptTag + iframeScriptInjector + modifiedHtml;
+                    modifiedHtml = baseTag + chatScriptTag + modifiedHtml;
                 }
 
                 newWin.document.open();
