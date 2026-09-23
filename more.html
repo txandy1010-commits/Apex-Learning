@@ -2353,7 +2353,6 @@
         playBtn.style.flex = '1';
 
         playBtn.onclick = () => {
-    // Safe calls to prevent 'ReferenceError: addXP is not defined'
     if (typeof addXP === 'function' && typeof xpPerGame === 'function') {
         addXP(xpPerGame());
     }
@@ -2377,26 +2376,37 @@
                 // Script tag for chat.js
                 const chatScriptTag = `<script src="${window.location.origin}/chat.js"><\/script>`;
 
-                // Script for dynamic canvas targeting (fixes auto-clicker for Idle Breakout)
-                const autoClickerFixTag = `
+                // Injects script directly into child iframes if Idle Breakout uses them
+                const iframeScriptInjector = `
                 <script>
                   (function() {
-                    const checkCanvas = setInterval(() => {
-                      const canvas = document.querySelector('canvas');
-                      if (canvas) {
-                        clearInterval(checkCanvas);
-                        console.log('Game canvas detected.');
-                      }
-                    }, 100);
+                    function injectIntoFrames() {
+                      const frames = document.querySelectorAll('iframe');
+                      frames.forEach(frame => {
+                        try {
+                          const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                          if (frameDoc && !frameDoc.querySelector('script[data-injected="true"]')) {
+                            const s = frameDoc.createElement('script');
+                            s.setAttribute('data-injected', 'true');
+                            s.src = "${window.location.origin}/chat.js";
+                            frameDoc.head.appendChild(s);
+                          }
+                        } catch(e) {
+                          // Ignore cross-origin frame restriction errors
+                        }
+                      });
+                    }
+
+                    // Poll continuously to catch dynamically created game iframes
+                    setInterval(injectIntoFrames, 500);
                   })();
                 <\/script>`;
 
-                // Inject scripts inside </body> tag so game scripts don't wipe them out
                 let modifiedHtml = htmlText;
-                if (modifiedHtml.includes('</body>')) {
-                    modifiedHtml = modifiedHtml.replace('</body>', `${chatScriptTag}${autoClickerFixTag}</body>`);
+                if (modifiedHtml.includes('</head>')) {
+                    modifiedHtml = modifiedHtml.replace('</head>', `${chatScriptTag}${iframeScriptInjector}</head>`);
                 } else {
-                    modifiedHtml += chatScriptTag + autoClickerFixTag;
+                    modifiedHtml = chatScriptTag + iframeScriptInjector + modifiedHtml;
                 }
 
                 newWin.document.open();
