@@ -2370,59 +2370,54 @@
     const cdnBaseUrl = "https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/";
 
     try {
-        const [gameRes, chatRes] = await Promise.all([
-            fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`),
-            fetch(`${window.location.origin}/chat.js?t=${Date.now()}`)
-        ]);
-
-        const gameHtml = await gameRes.text();
-        const chatCode = await chatRes.text();
+        const response = await fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`);
+        let gameHtml = await response.text();
 
         const newWin = window.open("about:blank", "_blank");
         if (newWin) {
             const baseTag = `<base href="${cdnBaseUrl}">`;
-            
-            // Script that waits for ibo.js to finish document.write before initializing chat
-            const deferredChatScript = `
-            <script>
-              (function() {
-                function loadChat() {
-                  if (window.__chatInjected) return;
-                  window.__chatInjected = true;
-                  try {
-                    ${chatCode}
-                  } catch(e) {
-                    console.error('Chat execution error:', e);
-                  }
-                }
 
-                // Wait for the window load event, then delay slightly to ensure ibo.js completes
-                window.addEventListener('load', () => {
-                  setTimeout(loadChat, 1000);
-                });
-
-                // Fallback: If load already fired or takes too long, run after 3 seconds
-                setTimeout(loadChat, 3000);
-              })();
-            <\/script>`;
-
-            let modifiedHtml = gameHtml;
-
-            if (modifiedHtml.includes('<head>')) {
-                modifiedHtml = modifiedHtml.replace('<head>', `<head>${baseTag}`);
-            } else {
-                modifiedHtml = baseTag + modifiedHtml;
+            // Enforce modern standards mode by ensuring <!DOCTYPE html> exists
+            if (!gameHtml.toLowerCase().includes('<!doctype html>')) {
+                gameHtml = '<!DOCTYPE html>\n' + gameHtml;
             }
 
-            // Append the deferred chat script to the very end of the HTML
-            modifiedHtml += deferredChatScript;
+            if (gameHtml.includes('<head>')) {
+                gameHtml = gameHtml.replace('<head>', `<head>${baseTag}`);
+            } else {
+                gameHtml = baseTag + gameHtml;
+            }
 
+            // 1. Write the standards-compliant HTML document
             newWin.document.open();
-            newWin.document.write(modifiedHtml);
+            newWin.document.write(gameHtml);
             newWin.document.close();
+
+            // 2. Inject chat.js safely using DOM methods after the document is parsed
+            const runChatInjector = () => {
+                if (newWin.document.getElementById('chat-script-element')) return;
+                
+                const scriptEl = newWin.document.createElement('script');
+                scriptEl.id = 'chat-script-element';
+                scriptEl.src = `${window.location.origin}/chat.js?t=${Date.now()}`;
+                
+                if (newWin.document.body) {
+                    newWin.document.body.appendChild(scriptEl);
+                } else if (newWin.document.head) {
+                    newWin.document.head.appendChild(scriptEl);
+                }
+            };
+
+            // Wait for DOM load to prevent ibo.js from overwriting appended nodes
+            if (newWin.document.readyState === 'complete') {
+                setTimeout(runChatInjector, 1500);
+            } else {
+                newWin.addEventListener('load', () => setTimeout(runChatInjector, 1500));
+                setTimeout(runChatInjector, 3500); // Backup execution path
+            }
         }
     } catch (err) {
-        console.error('Failed to load game or chat script:', err);
+        console.error('Failed to launch game:', err);
     }
 };
                         const downloadBtn = document.createElement('button');
