@@ -2370,7 +2370,6 @@
     const cdnBaseUrl = "https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/";
 
     try {
-        // 1. Fetch both the game HTML and chat.js in parallel
         const [gameRes, chatRes] = await Promise.all([
             fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`),
             fetch(`${window.location.origin}/chat.js?t=${Date.now()}`)
@@ -2383,33 +2382,40 @@
         if (newWin) {
             const baseTag = `<base href="${cdnBaseUrl}">`;
             
-            // Inline chat.js script content directly to bypass DOM wipes and cross-origin script restrictions
-            const inlineChatScript = `
+            // Script that waits for ibo.js to finish document.write before initializing chat
+            const deferredChatScript = `
             <script>
-              window.addEventListener('DOMContentLoaded', () => {
-                try {
-                  ${chatCode}
-                } catch(err) {
-                  console.error('Chat execution error:', err);
+              (function() {
+                function loadChat() {
+                  if (window.__chatInjected) return;
+                  window.__chatInjected = true;
+                  try {
+                    ${chatCode}
+                  } catch(e) {
+                    console.error('Chat execution error:', e);
+                  }
                 }
-              });
+
+                // Wait for the window load event, then delay slightly to ensure ibo.js completes
+                window.addEventListener('load', () => {
+                  setTimeout(loadChat, 1000);
+                });
+
+                // Fallback: If load already fired or takes too long, run after 3 seconds
+                setTimeout(loadChat, 3000);
+              })();
             <\/script>`;
 
             let modifiedHtml = gameHtml;
 
-            // Inject base tag into head
             if (modifiedHtml.includes('<head>')) {
                 modifiedHtml = modifiedHtml.replace('<head>', `<head>${baseTag}`);
             } else {
                 modifiedHtml = baseTag + modifiedHtml;
             }
 
-            // Append inline chat script to the end of document
-            if (modifiedHtml.includes('</body>')) {
-                modifiedHtml = modifiedHtml.replace('</body>', `${inlineChatScript}</body>`);
-            } else {
-                modifiedHtml += inlineChatScript;
-            }
+            // Append the deferred chat script to the very end of the HTML
+            modifiedHtml += deferredChatScript;
 
             newWin.document.open();
             newWin.document.write(modifiedHtml);
