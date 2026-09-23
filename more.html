@@ -2352,7 +2352,7 @@
         playBtn.value = file.replace(/^cl/i,'');
         playBtn.style.flex = '1';
 
-       playBtn.onclick = () => {
+      playBtn.onclick = async () => {
     if (typeof addXP === 'function' && typeof xpPerGame === 'function') {
         addXP(xpPerGame());
     }
@@ -2369,31 +2369,55 @@
     const encoded = encodeURIComponent(normalized);
     const cdnBaseUrl = "https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/";
 
-    fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`)
-        .then(response => response.text())
-        .then(htmlText => {
-            const newWin = window.open("about:blank", "_blank");
-            if (newWin) {
-                // Base tag forces relative asset calls (like Idle Breakout engine files) to load from the CDN
-                const baseTag = `<base href="${cdnBaseUrl}">`;
-                
-                // Absolute URL to chat.js on your main site host
-                const chatScriptTag = `<script src="${window.location.origin}/chat.js"><\/script>`;
+    try {
+        // 1. Fetch both the game HTML and chat.js in parallel
+        const [gameRes, chatRes] = await Promise.all([
+            fetch(`${cdnBaseUrl}${encoded}?t=${Date.now()}`),
+            fetch(`${window.location.origin}/chat.js?t=${Date.now()}`)
+        ]);
 
-                let modifiedHtml = htmlText;
+        const gameHtml = await gameRes.text();
+        const chatCode = await chatRes.text();
 
-                // Inject <base> and chat.js at the top of <head>
-                if (modifiedHtml.includes('<head>')) {
-                    modifiedHtml = modifiedHtml.replace('<head>', `<head>${baseTag}${chatScriptTag}`);
-                } else {
-                    modifiedHtml = baseTag + chatScriptTag + modifiedHtml;
+        const newWin = window.open("about:blank", "_blank");
+        if (newWin) {
+            const baseTag = `<base href="${cdnBaseUrl}">`;
+            
+            // Inline chat.js script content directly to bypass DOM wipes and cross-origin script restrictions
+            const inlineChatScript = `
+            <script>
+              window.addEventListener('DOMContentLoaded', () => {
+                try {
+                  ${chatCode}
+                } catch(err) {
+                  console.error('Chat execution error:', err);
                 }
+              });
+            <\/script>`;
 
-                newWin.document.open();
-                newWin.document.write(modifiedHtml);
-                newWin.document.close();
+            let modifiedHtml = gameHtml;
+
+            // Inject base tag into head
+            if (modifiedHtml.includes('<head>')) {
+                modifiedHtml = modifiedHtml.replace('<head>', `<head>${baseTag}`);
+            } else {
+                modifiedHtml = baseTag + modifiedHtml;
             }
-        });
+
+            // Append inline chat script to the end of document
+            if (modifiedHtml.includes('</body>')) {
+                modifiedHtml = modifiedHtml.replace('</body>', `${inlineChatScript}</body>`);
+            } else {
+                modifiedHtml += inlineChatScript;
+            }
+
+            newWin.document.open();
+            newWin.document.write(modifiedHtml);
+            newWin.document.close();
+        }
+    } catch (err) {
+        console.error('Failed to load game or chat script:', err);
+    }
 };
                         const downloadBtn = document.createElement('button');
                         downloadBtn.textContent = '⬇';
