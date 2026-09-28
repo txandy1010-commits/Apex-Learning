@@ -1,4 +1,14 @@
-// Start Session
+const express = require('express');
+const app = express();
+
+// Ensure body parsers are enabled
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Define your Owner Control Panel Auth Secret
+const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
+
+// 1. Start Session
 app.post('/api/session/start', async (req, res) => {
   const { username, page } = req.body;
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -19,15 +29,15 @@ app.post('/api/session/start', async (req, res) => {
 
     res.json({ success: true, sessionId });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to start session' });
+    console.error('Session Start Error:', err);
+    res.status(500).json({ success: false, error: 'Failed to start session' });
   }
 });
 
-// Log Page View
+// 2. Log Page View
 app.post('/api/session/pageview', async (req, res) => {
   const { sessionId, page } = req.body;
-  if (!sessionId) return res.status(400).json({ error: 'Missing session ID' });
+  if (!sessionId) return res.status(400).json({ success: false, error: 'Missing session ID' });
 
   try {
     await db.query(
@@ -40,14 +50,15 @@ app.post('/api/session/pageview', async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to log pageview' });
+    console.error('Pageview Error:', err);
+    res.status(500).json({ success: false, error: 'Failed to log pageview' });
   }
 });
 
-// Heartbeat
+// 3. Heartbeat
 app.post('/api/session/heartbeat', async (req, res) => {
   const { sessionId } = req.body;
-  if (!sessionId) return res.status(400).json({ error: 'Missing session ID' });
+  if (!sessionId) return res.status(400).json({ success: false, error: 'Missing session ID' });
 
   try {
     await db.query(
@@ -56,18 +67,19 @@ app.post('/api/session/heartbeat', async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Heartbeat failed' });
+    console.error('Heartbeat Error:', err);
+    res.status(500).json({ success: false, error: 'Heartbeat failed' });
   }
 });
 
-// End Session
+// 4. End Session
 app.post('/api/session/end', async (req, res) => {
   let payload = req.body;
   if (typeof payload === 'string') {
     try { payload = JSON.parse(payload); } catch (e) {}
   }
   const { sessionId } = payload || {};
-  if (!sessionId) return res.status(400).json({ error: 'Missing session ID' });
+  if (!sessionId) return res.status(400).json({ success: false, error: 'Missing session ID' });
 
   try {
     await db.query(
@@ -76,22 +88,29 @@ app.post('/api/session/end', async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to end session' });
+    console.error('End Session Error:', err);
+    res.status(500).json({ success: false, error: 'Failed to end session' });
   }
 });
 
-// 3-Day History for Owner Panel
+// 5. 3-Day History for Owner Panel (Fixed Auth & Query Handling)
 app.get('/api/owner/sessions', async (req, res) => {
+  // Extract custom auth header
   const authHeader = req.headers['x-owner-auth'];
-  if (authHeader !== OWNER_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  if (!authHeader || authHeader !== OWNER_SECRET) {
+    return res.status(403).json({ success: false, error: 'Unauthorized: Invalid Auth Header' });
+  }
 
   try {
-    // Auto-timeout inactive sessions (>2m without heartbeat)
+    // Automatically mark inactive sessions (>2 minutes without heartbeat) as timed out
     await db.query(`
-      UPDATE user_sessions SET ended_at = last_heartbeat, status = 'timed_out'
+      UPDATE user_sessions 
+      SET ended_at = last_heartbeat, status = 'timed_out'
       WHERE ended_at IS NULL AND last_heartbeat < NOW() - INTERVAL '2 minutes'
     `);
 
+    // Fetch session data alongside page transition history for the past 3 days
     const result = await db.query(`
       SELECT 
         s.session_id,
@@ -116,7 +135,7 @@ app.get('/api/owner/sessions', async (req, res) => {
 
     res.json({ success: true, sessions: result.rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch session history' });
+    console.error('Session History Fetch Error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch session history' });
   }
 });
