@@ -48,6 +48,12 @@
     .form-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .form-input { flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; min-width: 150px; }
     .real-name-input { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; width: 100%; max-width: 180px; }
+
+    /* Page Navigation Timeline Details */
+    details summary { cursor: pointer; font-weight: 600; color: var(--accent); outline: none; }
+    .timeline-list { margin-top: 8px; padding-left: 12px; font-size: 0.85rem; border-left: 2px solid var(--border); }
+    .timeline-item { margin-bottom: 4px; }
+    .timeline-time { color: #64748b; font-size: 0.75rem; margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -153,6 +159,29 @@
       </table>
     </div>
 
+    <!-- NEW SECTION: 3-Day Session & Page Navigation History -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">3-Day Session & Navigation Timeline</h2>
+        <button class="refresh-btn" onclick="loadSessionHistory()">Refresh History</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Start Time</th>
+            <th>Stop Time</th>
+            <th>Duration</th>
+            <th>Page Transitions & Timestamps</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="sessionHistoryTableBody">
+          <tr><td colspan="6" style="color: #94a3b8;">Loading 3-day history...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- 5. User Management -->
     <div class="card">
       <div class="card-header">
@@ -242,6 +271,80 @@
         console.error('Error loading active users:', err);
         tableBody.innerHTML = '<tr><td colspan="5" style="color: var(--danger);">Error connecting to server.</td></tr>';
       }
+    }
+
+    // --- 3-Day Session History with Page Navigation Timestamps ---
+    async function loadSessionHistory() {
+      const tableBody = document.getElementById('sessionHistoryTableBody');
+      try {
+        const res = await fetch('/api/owner/sessions', {
+          headers: { 'x-owner-auth': OWNER_SECRET }
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          if (!data.sessions || data.sessions.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8;">No session records found for the past 3 days.</td></tr>';
+            return;
+          }
+
+          tableBody.innerHTML = data.sessions.map(s => {
+            const startTime = new Date(s.started_at).toLocaleString();
+            const stopTime = s.ended_at 
+              ? new Date(s.ended_at).toLocaleString() 
+              : '<span style="color: var(--success); font-weight: bold;">● Online Now</span>';
+
+            const statusBadge = s.ended_at 
+              ? `<span style="color: #64748b;">${s.status}</span>`
+              : `<span style="color: var(--success); font-weight: 600;">Active</span>`;
+
+            // Build page view navigation list with timestamps
+            let pageTimelineHtml = '<em>No page logs</em>';
+            if (s.page_history && s.page_history.length > 0) {
+              const items = s.page_history.map(pv => `
+                <div class="timeline-item">
+                  <span class="timeline-time">${new Date(pv.visited_at).toLocaleTimeString()}</span>
+                  <code>${pv.page}</code>
+                </div>
+              `).join('');
+
+              pageTimelineHtml = `
+                <details>
+                  <summary>${s.page_history.length} page(s) visited</summary>
+                  <div class="timeline-list">${items}</div>
+                </details>
+              `;
+            }
+
+            return `
+              <tr>
+                <td style="font-weight: 600;">${s.username}</td>
+                <td style="font-size: 0.82rem;">${startTime}</td>
+                <td style="font-size: 0.82rem;">${stopTime}</td>
+                <td>${formatDuration(s.duration_seconds)}</td>
+                <td>${pageTimelineHtml}</td>
+                <td>${statusBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--danger);">Failed to load history.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Error loading history:', err);
+        tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--danger);">Error connecting to server.</td></tr>';
+      }
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds || seconds < 0) return '0s';
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+
+      if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
+      if (mins > 0) return `${mins}m ${secs}s`;
+      return `${secs}s`;
     }
 
     async function kickUser(username) {
@@ -537,7 +640,6 @@
           const currentUser = localStorage.getItem('loggedUser');
           const currentRole = localStorage.getItem('role');
 
-          // Find the first banner that applies to the current active session
           const activeBanner = data.banners.find(b => {
             const isGlobal = !b.target_user && !b.target_role;
             const matchesUser = b.target_user && currentUser && b.target_user.toLowerCase() === currentUser.toLowerCase();
@@ -562,18 +664,18 @@
       fetchBannersList();
     });
     loadActiveUsers();
+    loadSessionHistory();
     loadBanner();
 
-    // Periodic auto-refresh for active sessions (every 10 seconds)
-    setInterval(loadActiveUsers, 10000);
+    // Periodic auto-refresh for live users & 3-day history
+    setInterval(() => {
+      loadActiveUsers();
+      loadSessionHistory();
+    }, 10000);
   </script>
-  <!-- Load Pusher JS Client Library -->
-<!-- Load Pusher JS Library -->
-<!-- Pusher Client Library -->
-<!-- Load Pusher Library First -->
-<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 
-<!-- Load Your Chat Script -->
-<script src="/chat.js"></script>
+  <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+  <script src="/chat.js"></script>
+  <script src="/session-tracker.js"></script>
 </body>
 </html>
