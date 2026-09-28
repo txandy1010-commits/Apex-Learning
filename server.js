@@ -109,7 +109,7 @@ app.get('/api/owner/sessions', async (req, res) => {
       SET ended_at = last_heartbeat, status = 'timed_out'
       WHERE ended_at IS NULL AND last_heartbeat < NOW() - INTERVAL '2 minutes'
     `);
-
+module.exports = app;
     // Fetch session data alongside page transition history for the past 3 days
     const result = await db.query(`
       SELECT 
@@ -139,3 +139,5 @@ app.get('/api/owner/sessions', async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch session history' });
   }
 });
+
+
