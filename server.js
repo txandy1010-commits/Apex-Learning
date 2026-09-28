@@ -1,9 +1,18 @@
 const express = require('express');
+const { Pool } = require('pg');
+
 const app = express();
 
-// Ensure body parsers are enabled
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Use a connection pool for serverless durability
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 // Define your Owner Control Panel Auth Secret
 const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
