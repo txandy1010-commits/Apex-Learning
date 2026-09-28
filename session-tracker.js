@@ -5,56 +5,68 @@
     return localStorage.getItem('loggedUser') || localStorage.getItem('username') || 'Guest';
   }
 
-  // Start Session
+  // Start or resume session & log page visit
   async function initSession() {
-    if (currentSessionId) return; // Session already initialized in this tab
+    const currentPath = window.location.pathname;
 
-    try {
-      const res = await fetch('/api/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: getUsername(),
-          page: window.location.pathname
-        })
-      });
-      const data = await res.json();
-      if (data.sessionId) {
-        currentSessionId = data.sessionId;
-        sessionStorage.setItem('active_session_id', currentSessionId);
+    if (!currentSessionId) {
+      try {
+        const res = await fetch('/api/session/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: getUsername(),
+            page: currentPath
+          })
+        });
+        const data = await res.json();
+        if (data.sessionId) {
+          currentSessionId = data.sessionId;
+          sessionStorage.setItem('active_session_id', currentSessionId);
+        }
+      } catch (err) {
+        console.error('Session start error:', err);
       }
-    } catch (err) {
-      console.error('Failed to initiate session:', err);
+    } else {
+      // Session already active, log page navigation
+      try {
+        await fetch('/api/session/pageview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: currentSessionId,
+            page: currentPath
+          })
+        });
+      } catch (err) {
+        console.error('Pageview log error:', err);
+      }
     }
   }
 
-  // Send Heartbeat
+  // Periodic heartbeat
   async function sendHeartbeat() {
     if (!currentSessionId) return;
     try {
       await fetch('/api/session/heartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: currentSessionId,
-          page: window.location.pathname
-        })
+        body: JSON.stringify({ sessionId: currentSessionId })
       });
     } catch (err) {
-      console.error('Heartbeat failed:', err);
+      console.error('Heartbeat error:', err);
     }
   }
 
-  // End Session on Tab Close / Exit
+  // End session on close/leave
   function endSession() {
     if (!currentSessionId) return;
     const payload = JSON.stringify({ sessionId: currentSessionId });
     navigator.sendBeacon('/api/session/end', payload);
   }
 
-  // Lifecycle Bindings
   initSession();
-  setInterval(sendHeartbeat, 15000); // Heartbeat every 15s
+  setInterval(sendHeartbeat, 15000); // Pulse every 15s
 
   window.addEventListener('pagehide', endSession);
   window.addEventListener('beforeunload', endSession);
