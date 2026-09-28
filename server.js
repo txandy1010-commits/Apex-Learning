@@ -1,12 +1,17 @@
 const express = require('express');
+const cors = require('cors');
 const { Pool } = require('pg');
 
 const app = express();
 
+// Enable CORS for all routes (fixes OPTIONS preflight / 405 errors)
+app.use(cors());
+
+// Body parser middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Use a connection pool for serverless durability
+// Database Connection Pool for Vercel serverless durability
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -14,8 +19,12 @@ const db = new Pool({
   }
 });
 
-// Define your Owner Control Panel Auth Secret
+// Owner Control Panel Auth Secret
 const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
+
+// -------------------------------------------------------------
+// API ROUTES
+// -------------------------------------------------------------
 
 // 1. Start Session
 app.post('/api/session/start', async (req, res) => {
@@ -102,9 +111,8 @@ app.post('/api/session/end', async (req, res) => {
   }
 });
 
-// 5. 3-Day History for Owner Panel (Fixed Auth & Query Handling)
+// 5. 3-Day History for Owner Panel
 app.get('/api/owner/sessions', async (req, res) => {
-  // Extract custom auth header
   const authHeader = req.headers['x-owner-auth'];
 
   if (!authHeader || authHeader !== OWNER_SECRET) {
@@ -149,4 +157,17 @@ app.get('/api/owner/sessions', async (req, res) => {
   }
 });
 
+// -------------------------------------------------------------
+// VERCEL & LOCAL LISTENER
+// -------------------------------------------------------------
+
+// Local environment listener
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running locally on port ${PORT}`);
+  });
+}
+
+// Export for Vercel Serverless Function engine
 module.exports = app;
