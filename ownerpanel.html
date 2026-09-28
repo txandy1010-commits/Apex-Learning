@@ -159,7 +159,7 @@
       </table>
     </div>
 
-    <!-- NEW SECTION: 3-Day Session & Page Navigation History -->
+    <!-- 5-Day Session & Page Navigation History -->
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">3-Day Session & Navigation Timeline</h2>
@@ -217,7 +217,12 @@
   </div>
 
   <script>
-    const OWNER_SECRET = 'dfsgdsFDGFgdjfbljBLDJGSYsfsdfFGDGSGSDG';
+    // Fetch authentication header dynamically from session storage rather than hardcoding credentials
+    function getAuthHeaders() {
+      const token = sessionStorage.getItem('ownerToken') || localStorage.getItem('ownerToken') || '';
+      return { 'x-owner-auth': token };
+    }
+
     let registeredUsersList = [];
 
     // Populate dropdowns with current registered users
@@ -243,7 +248,7 @@
       const tableBody = document.getElementById('activeUsersTableBody');
       try {
         const res = await fetch('/api/active-users', {
-          headers: { 'x-owner-auth': OWNER_SECRET }
+          headers: getAuthHeaders()
         });
         const data = await res.json();
 
@@ -278,7 +283,7 @@
       const tableBody = document.getElementById('sessionHistoryTableBody');
       try {
         const res = await fetch('/api/owner/sessions', {
-          headers: { 'x-owner-auth': OWNER_SECRET }
+          headers: getAuthHeaders()
         });
         const data = await res.json();
 
@@ -298,7 +303,6 @@
               ? `<span style="color: #64748b;">${s.status}</span>`
               : `<span style="color: var(--success); font-weight: 600;">Active</span>`;
 
-            // Build page view navigation list with timestamps
             let pageTimelineHtml = '<em>No page logs</em>';
             if (s.page_history && s.page_history.length > 0) {
               const items = s.page_history.map(pv => `
@@ -355,7 +359,7 @@
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'x-owner-auth': OWNER_SECRET 
+            ...getAuthHeaders()
           },
           body: JSON.stringify({ username })
         });
@@ -384,7 +388,7 @@
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'x-owner-auth': OWNER_SECRET 
+            ...getAuthHeaders()
           },
           body: JSON.stringify({ username })
         });
@@ -406,7 +410,7 @@
     async function loadRegisteredUsers() {
       try {
         const res = await fetch('/api/admin-users', {
-          headers: { 'x-owner-auth': OWNER_SECRET }
+          headers: getAuthHeaders()
         });
         const data = await res.json();
 
@@ -458,7 +462,7 @@
 
       const res = await fetch('/api/admin-users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ username, password, role })
       });
 
@@ -474,7 +478,7 @@
     async function updateRealName(username, realName) {
       await fetch('/api/admin-users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ username, realName })
       });
     }
@@ -482,7 +486,7 @@
     async function updateRole(username, newRole) {
       await fetch('/api/admin-users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ username, newRole })
       });
       loadRegisteredUsers();
@@ -494,7 +498,7 @@
 
       const res = await fetch('/api/admin-users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ username, newPassword })
       });
 
@@ -506,7 +510,7 @@
 
       const res = await fetch('/api/admin-users', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'x-owner-auth': OWNER_SECRET },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ username })
       });
 
@@ -518,7 +522,7 @@
       const tableBody = document.getElementById('activeBannersTableBody');
       try {
         const res = await fetch('/api/announcement?mode=all', {
-          headers: { 'x-owner-auth': OWNER_SECRET }
+          headers: getAuthHeaders()
         });
         const data = await res.json();
 
@@ -573,7 +577,7 @@
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'x-owner-auth': OWNER_SECRET 
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ message, targetUser, targetRole })
       });
@@ -596,7 +600,7 @@
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json', 
-          'x-owner-auth': OWNER_SECRET 
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ id, message, targetUser, targetRole })
       });
@@ -617,7 +621,7 @@
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json', 
-          'x-owner-auth': OWNER_SECRET 
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ id })
       });
